@@ -1,13 +1,14 @@
-use crate::lookup::{Lookup, LookupType};
+use crate::lookup::Lookup;
 use crate::proto::{
-    RdfDatatypeEntry, RdfIri, RdfLiteral, RdfNameEntry, RdfPrefixEntry, RdfQuad, RdfStreamOptions,
-    RdfTriple, rdf_literal::LiteralKind, rdf_quad as q, rdf_triple as t,
+    RdfDatatypeEntry, RdfNameEntry, RdfPrefixEntry, RdfQuad, RdfStreamOptions, RdfTriple,
+    rdf_quad as q, rdf_triple as t,
 };
+use crate::to_rdf::ToRdf;
 use paste::paste;
 
 // These functions are the same for all 6 types, I don't want to write that by hand
 // Only difference is the q::Subject::SIri vs q::Predicate::PIri
-trait ToTerm<Term, TermType> {
+pub trait ToTerm<Term, TermType> {
     fn to_term(&mut self, thing: Term) -> TermType;
 }
 macro_rules! implTerm {
@@ -28,120 +29,6 @@ macro_rules! implTerm {
     };
 }
 
-pub trait ToRdf: Sized {
-    type Term: Default;
-    type Triple<'b>
-    where
-        Self: 'b;
-
-    type Quad<'b>
-    where
-        Self: 'b;
-    type State: Default;
-
-    fn iri(iri: RdfIri, deserializer: &mut Deserializer<Self>) -> Self::Term;
-    fn bnode(key: String, deserializer: &mut Deserializer<Self>) -> Self::Term;
-    fn literal(literal: RdfLiteral, deserializer: &mut Deserializer<Self>) -> Self::Term;
-    fn term_triple(triple: RdfTriple, deserializer: &mut Deserializer<Self>) -> Self::Term;
-
-    fn triple<'b>(deserializer: &'b mut Deserializer<Self>) -> Self::Triple<'b>;
-    fn quad<'b>(deserializer: &'b mut Deserializer<Self>) -> Self::Quad<'b>;
-}
-
-pub struct StringRdf;
-impl ToRdf for StringRdf {
-    type Term = String;
-
-    type Triple<'a> = (&'a str, &'a str, &'a str);
-
-    type Quad<'a> = (&'a str, &'a str, &'a str, Option<&'a str>);
-    type State = ();
-
-    #[inline]
-    fn iri(iri: RdfIri, deserializer: &mut Deserializer<Self>) -> Self::Term {
-        format!(
-            "<{}{}>",
-            deserializer
-                .prefix_table
-                .get(iri.prefix_id, LookupType::Stay),
-            deserializer.name_table.get(iri.name_id, LookupType::Inc)
-        )
-    }
-
-    #[inline]
-    fn bnode(key: String, _: &mut Deserializer<Self>) -> Self::Term {
-        format!("_:B{}", key)
-    }
-
-    #[inline]
-    fn literal(literal: RdfLiteral, deserializer: &mut Deserializer<Self>) -> Self::Term {
-        let lex = literal.lex;
-        match literal.literal_kind {
-            Some(LiteralKind::Langtag(tag)) => format!("\"{}\"@{}", lex, tag),
-            Some(LiteralKind::Datatype(tag)) => {
-                format!(
-                    "\"{}\"^^<{}>",
-                    lex,
-                    deserializer.datatype_table.get(tag, LookupType::Invalid)
-                )
-            }
-            None => {
-                format!("\"{}\"", lex)
-            }
-        }
-    }
-
-    #[inline]
-    fn term_triple(triple: RdfTriple, deserializer: &mut Deserializer<Self>) -> Self::Term {
-        let RdfTriple {
-            subject,
-            predicate,
-            object,
-        } = triple;
-        let s = if let Some(s) = subject {
-            deserializer.to_term(s)
-        } else {
-            info!("I don't know if this is correct");
-            todo!()
-        };
-
-        let p = if let Some(s) = predicate {
-            deserializer.to_term(s)
-        } else {
-            info!("I don't know if this is correct");
-            todo!()
-        };
-
-        let o = if let Some(s) = object {
-            deserializer.to_term(s)
-        } else {
-            info!("I don't know if this is correct");
-            todo!()
-        };
-
-        format!("<< {} {} {} >>", s, p, o)
-    }
-
-    #[inline]
-    fn triple<'a>(deserializer: &'a mut Deserializer<Self>) -> Self::Triple<'a> {
-        (
-            &deserializer.last_subject,
-            &deserializer.last_predicate,
-            &deserializer.last_object,
-        )
-    }
-
-    #[inline]
-    fn quad<'a>(deserializer: &'a mut Deserializer<Self>) -> Self::Quad<'a> {
-        (
-            &deserializer.last_subject,
-            &deserializer.last_predicate,
-            &deserializer.last_object,
-            deserializer.last_graph.as_ref().map(|x| x.as_str()),
-        )
-    }
-}
-
 implTerm!(q::Subject, S,);
 implTerm!(q::Predicate, P,);
 implTerm!(q::Object, O,);
@@ -150,14 +37,14 @@ implTerm!(t::Predicate, P, *);
 implTerm!(t::Object, O, *);
 
 pub struct Deserializer<T: ToRdf> {
-    name_table: Lookup,
-    prefix_table: Lookup,
-    datatype_table: Lookup,
+    pub name_table: Lookup,
+    pub prefix_table: Lookup,
+    pub datatype_table: Lookup,
 
-    last_subject: T::Term,
-    last_predicate: T::Term,
-    last_object: T::Term,
-    last_graph: Option<T::Term>,
+    pub last_subject: T::Term,
+    pub last_predicate: T::Term,
+    pub last_object: T::Term,
+    pub last_graph: Option<T::Term>,
 }
 
 impl<T: ToRdf> Deserializer<T> {
