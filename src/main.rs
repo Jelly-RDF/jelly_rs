@@ -7,7 +7,8 @@ use std::{
 };
 
 use jelly::{
-    Thing,
+    Deserializer,
+    deserialize::{StringRdf, ToRdf as _},
     proto::{RdfStreamFrame, rdf_stream_row::Row},
 };
 use prost::Message as _;
@@ -76,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         reader: BufReader::new(file),
     };
 
-    let mut m_thing: Option<Thing> = None;
+    let mut m_thing: Option<Deserializer<StringRdf>> = None;
 
     for frame in generator {
         let rows = frame.rows.into_iter().flat_map(|x| x.row);
@@ -87,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if m_thing.is_some() {
                     info!("Didn't expect new options, but I don't care, ignoring");
                 } else {
-                    m_thing = Some(Thing::from_options(&options));
+                    m_thing = Some(Deserializer::from_options(&options));
                 }
             }
 
@@ -109,14 +110,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Row::GraphStart(rdf_graph_start) => todo!(),
                 Row::GraphEnd(rdf_graph_end) => todo!(),
                 Row::Namespace(rdf_namespace_declaration) => {
-                    info!(
-                        "Name space is fine: {} -> {}",
-                        rdf_namespace_declaration.name,
-                        rdf_namespace_declaration
-                            .value
-                            .map(|iri| thing.iri(iri))
-                            .unwrap_or(String::new())
-                    );
+                    // info!(
+                    //     "Name space is fine: {} -> {}",
+                    //     rdf_namespace_declaration.name,
+                    //     rdf_namespace_declaration
+                    //         .value
+                    //         .map(|iri| StringRdf::iri(iri, thing))
+                    //         .unwrap_or(String::new())
+                    // );
                 }
                 Row::Name(rdf_name_entry) => thing.name_entry(rdf_name_entry),
                 Row::Prefix(rdf_prefix_entry) => thing.prefix_entry(rdf_prefix_entry),
