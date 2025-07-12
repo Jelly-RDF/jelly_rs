@@ -14,6 +14,10 @@ impl ToRdf for StringRdf {
     type Quad<'a> = (&'a str, &'a str, &'a str, Option<&'a str>);
     type State = ();
 
+    fn default_term() -> Self::Term {
+        String::new()
+    }
+
     #[inline]
     fn iri(iri: RdfIri, deserializer: &mut Deserializer<Self>) -> Self::Term {
         format!(
@@ -82,18 +86,36 @@ impl ToRdf for StringRdf {
     #[inline]
     fn triple<'a>(deserializer: &'a mut Deserializer<Self>) -> Self::Triple<'a> {
         (
-            &deserializer.last_subject,
-            &deserializer.last_predicate,
-            &deserializer.last_object,
+            &deserializer
+                .last_subject
+                .as_ref()
+                .expect("subject to be present"),
+            &deserializer
+                .last_predicate
+                .as_ref()
+                .expect("predicate to be present"),
+            &deserializer
+                .last_object
+                .as_ref()
+                .expect("object to be present"),
         )
     }
 
     #[inline]
     fn quad<'a>(deserializer: &'a mut Deserializer<Self>) -> Self::Quad<'a> {
         (
-            &deserializer.last_subject,
-            &deserializer.last_predicate,
-            &deserializer.last_object,
+            &deserializer
+                .last_subject
+                .as_ref()
+                .expect("subject to be present"),
+            &deserializer
+                .last_predicate
+                .as_ref()
+                .expect("predicate to be present"),
+            &deserializer
+                .last_object
+                .as_ref()
+                .expect("object to be present"),
             deserializer.last_graph.as_ref().map(|x| x.as_str()),
         )
     }
