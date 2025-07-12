@@ -1,11 +1,16 @@
 use crate::Deserializer;
 use crate::proto::{RdfIri, RdfLiteral, RdfTriple};
 
-pub mod strings;
+mod strings;
 pub use strings::StringRdf;
 
+#[cfg(feature = "sophia")]
+mod sophia;
+#[cfg(feature = "sophia")]
+pub use sophia::SophiaRdf;
+
 pub trait ToRdf: Sized {
-    type Term: Default;
+    type Term;
     type Triple<'b>
     where
         Self: 'b;
@@ -14,6 +19,8 @@ pub trait ToRdf: Sized {
     where
         Self: 'b;
     type State: Default;
+
+    fn default_term() -> Self::Term;
 
     fn iri(iri: RdfIri, deserializer: &mut Deserializer<Self>) -> Self::Term;
     fn bnode(key: String, deserializer: &mut Deserializer<Self>) -> Self::Term;

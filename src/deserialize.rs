@@ -41,10 +41,12 @@ pub struct Deserializer<T: ToRdf> {
     pub prefix_table: Lookup,
     pub datatype_table: Lookup,
 
-    pub last_subject: T::Term,
-    pub last_predicate: T::Term,
-    pub last_object: T::Term,
+    pub last_subject: Option<T::Term>,
+    pub last_predicate: Option<T::Term>,
+    pub last_object: Option<T::Term>,
     pub last_graph: Option<T::Term>,
+
+    pub state: T::State,
 }
 
 impl<T: ToRdf> Deserializer<T> {
@@ -55,10 +57,12 @@ impl<T: ToRdf> Deserializer<T> {
             datatype_table: Lookup::new(options.max_datatype_table_size),
             prefix_table: Lookup::new(options.max_prefix_table_size),
 
-            last_subject: T::Term::default(),
-            last_predicate: T::Term::default(),
-            last_object: T::Term::default(),
+            last_subject: None,
+            last_predicate: None,
+            last_object: None,
             last_graph: None,
+
+            state: T::State::default(),
         }
     }
 
@@ -91,15 +95,15 @@ impl<T: ToRdf> Deserializer<T> {
     #[inline]
     pub fn triple<'a>(&'a mut self, triple: RdfTriple) -> T::Triple<'a> {
         if let Some(subject) = triple.subject {
-            self.last_subject = self.to_term(subject);
+            self.last_subject = Some(self.to_term(subject));
         }
 
         if let Some(predicate) = triple.predicate {
-            self.last_predicate = self.to_term(predicate);
+            self.last_predicate = Some(self.to_term(predicate));
         }
 
         if let Some(object) = triple.object {
-            self.last_object = self.to_term(object);
+            self.last_object = Some(self.to_term(object));
         }
 
         T::triple(self)
@@ -108,15 +112,15 @@ impl<T: ToRdf> Deserializer<T> {
     #[inline]
     pub fn quad<'a>(&'a mut self, quad: RdfQuad) -> T::Quad<'a> {
         if let Some(subject) = quad.subject {
-            self.last_subject = self.to_term(subject);
+            self.last_subject = Some(self.to_term(subject));
         }
 
         if let Some(predicate) = quad.predicate {
-            self.last_predicate = self.to_term(predicate);
+            self.last_predicate = Some(self.to_term(predicate));
         }
 
         if let Some(object) = quad.object {
-            self.last_object = self.to_term(object);
+            self.last_object = Some(self.to_term(object));
         }
 
         if let Some(graph) = quad.graph {

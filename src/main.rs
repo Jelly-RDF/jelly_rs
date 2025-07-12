@@ -110,14 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Row::GraphStart(rdf_graph_start) => todo!(),
                 Row::GraphEnd(rdf_graph_end) => todo!(),
                 Row::Namespace(rdf_namespace_declaration) => {
-                    info!(
-                        "Name space is fine: {} -> {}",
-                        rdf_namespace_declaration.name,
-                        rdf_namespace_declaration
-                            .value
-                            .map(|iri| StringRdf::iri(iri, thing))
-                            .unwrap_or(String::new())
-                    );
+                    info!("Name space is fine: {} ", rdf_namespace_declaration.name,);
                 }
                 Row::Name(rdf_name_entry) => thing.name_entry(rdf_name_entry),
                 Row::Prefix(rdf_prefix_entry) => thing.prefix_entry(rdf_prefix_entry),
