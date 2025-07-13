@@ -1,3 +1,4 @@
+use crate::error::DeserializeError;
 use crate::lookup::Lookup;
 use crate::proto::{
     RdfDatatypeEntry, RdfNameEntry, RdfPrefixEntry, RdfQuad, RdfStreamOptions, RdfTriple,
@@ -9,14 +10,14 @@ use paste::paste;
 // These functions are the same for all 6 types, I don't want to write that by hand
 // Only difference is the q::Subject::SIri vs q::Predicate::PIri
 pub trait ToTerm<Term, TermType> {
-    fn to_term(&mut self, thing: Term) -> TermType;
+    fn to_term(&mut self, thing: Term) -> Result<TermType, DeserializeError>;
 }
 macro_rules! implTerm {
     ($k:path, $letter:ident, $($extra:tt)?) => {
         paste! {
                 impl<T: ToRdf> ToTerm<$k, T::Term> for Deserializer<T> {
                     #[inline]
-                    fn to_term(&mut self, thing: $k) -> T::Term {
+                    fn to_term(&mut self, thing: $k) -> Result<T::Term, DeserializeError> {
                         match thing {
                             $k::[<$letter Iri>](rdf_iri) => T::iri(rdf_iri, self),
                             $k::[<$letter Bnode>](bnode) => T::bnode(bnode, self),
@@ -67,65 +68,70 @@ impl<T: ToRdf> Deserializer<T> {
     }
 
     #[inline]
-    pub fn prefix_entry(&mut self, prefix: RdfPrefixEntry) {
-        self.prefix_table.set(prefix.id, prefix.value);
+    pub fn prefix_entry(&mut self, prefix: RdfPrefixEntry) -> Result<(), DeserializeError> {
+        self.prefix_table.set(prefix.id, prefix.value)?;
+        Ok(())
     }
 
     #[inline]
-    pub fn name_entry(&mut self, name: RdfNameEntry) {
-        self.name_table.set(name.id, name.value);
+    pub fn name_entry(&mut self, name: RdfNameEntry) -> Result<(), DeserializeError> {
+        self.name_table.set(name.id, name.value)?;
+        Ok(())
     }
 
     #[inline]
-    pub fn datatype_entry(&mut self, entry: RdfDatatypeEntry) {
-        self.datatype_table.set(entry.id, entry.value);
+    pub fn datatype_entry(&mut self, entry: RdfDatatypeEntry) -> Result<(), DeserializeError> {
+        self.datatype_table.set(entry.id, entry.value)?;
+        Ok(())
     }
 
     #[inline]
-    pub fn q_graph(&mut self, sub: q::Graph) {
+    pub fn q_graph(&mut self, sub: q::Graph) -> Result<(), DeserializeError> {
         trace!("q_graph");
         match sub {
-            q::Graph::GIri(iri) => self.last_graph = Some(T::iri(iri, self)),
-            q::Graph::GBnode(str) => self.last_graph = Some(T::bnode(str, self)),
-            q::Graph::GLiteral(literal) => self.last_graph = Some(T::literal(literal, self)),
+            q::Graph::GIri(iri) => self.last_graph = Some(T::iri(iri, self)?),
+            q::Graph::GBnode(str) => self.last_graph = Some(T::bnode(str, self)?),
+            q::Graph::GLiteral(literal) => self.last_graph = Some(T::literal(literal, self)?),
             q::Graph::GDefaultGraph(_) => self.last_graph = None,
         }
+        Ok(())
     }
 
     #[inline]
-    pub fn triple<'a>(&'a mut self, triple: RdfTriple) -> T::Triple<'a> {
+    pub fn triple<'a>(&'a mut self, triple: RdfTriple) -> Result<T::Triple<'a>, DeserializeError> {
         if let Some(subject) = triple.subject {
-            self.last_subject = Some(self.to_term(subject));
+            self.last_subject = Some(self.to_term(subject)?);
         }
 
         if let Some(predicate) = triple.predicate {
-            self.last_predicate = Some(self.to_term(predicate));
+            self.last_predicate = Some(self.to_term(predicate)?);
         }
 
         if let Some(object) = triple.object {
-            self.last_object = Some(self.to_term(object));
+            self.last_object = Some(self.to_term(object)?);
         }
 
         T::triple(self)
     }
 
     #[inline]
-    pub fn quad<'a>(&'a mut self, quad: RdfQuad) -> T::Quad<'a> {
+    pub fn quad<'a>(&'a mut self, quad: RdfQuad) -> Result<T::Quad<'a>, DeserializeError> {
         if let Some(subject) = quad.subject {
-            self.last_subject = Some(self.to_term(subject));
+            self.last_subject = Some(self.to_term(subject)?);
         }
 
         if let Some(predicate) = quad.predicate {
-            self.last_predicate = Some(self.to_term(predicate));
+            self.last_predicate = Some(self.to_term(predicate)?);
         }
 
         if let Some(object) = quad.object {
-            self.last_object = Some(self.to_term(object));
+            self.last_object = Some(self.to_term(object)?);
         }
 
         if let Some(graph) = quad.graph {
-            self.q_graph(graph);
+            self.q_graph(graph)?;
         }
+
         T::quad(self)
     }
 }
