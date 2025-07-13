@@ -9,7 +9,7 @@ use std::{
 use jelly::{
     Deserializer,
     proto::{RdfStreamFrame, rdf_stream_row::Row},
-    to_rdf::{StringRdf, ToRdf as _},
+    to_rdf::StringRdf,
 };
 use prost::Message as _;
 
@@ -95,26 +95,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let thing = m_thing.as_mut().unwrap();
             match row {
                 Row::Options(_) => {}
-                Row::Triple(rdf_triple) => {
-                    let (s, p, o) = thing.triple(rdf_triple);
-                    println!("{} {} {} .", s, p, o);
-                }
-                Row::Quad(rdf_quad) => {
-                    let (s, p, o, g) = thing.quad(rdf_quad);
-                    if let Some(g) = g {
-                        println!("{} {} {} {} .", s, p, o, g);
-                    } else {
+                Row::Triple(rdf_triple) => match thing.triple(rdf_triple) {
+                    Ok((s, p, o)) => {
                         println!("{} {} {} .", s, p, o);
                     }
-                }
+                    Err(e) => {
+                        println!("Error {:?}", e);
+                    }
+                },
+                Row::Quad(rdf_quad) => match thing.quad(rdf_quad) {
+                    Ok((s, p, o, Some(g))) => {
+                        println!("{} {} {} {} .", s, p, o, g);
+                    }
+
+                    Ok((s, p, o, None)) => {
+                        println!("{} {} {} .", s, p, o,);
+                    }
+                    Err(e) => {
+                        println!("Error {:?}", e);
+                    }
+                },
                 Row::GraphStart(rdf_graph_start) => todo!(),
                 Row::GraphEnd(rdf_graph_end) => todo!(),
                 Row::Namespace(rdf_namespace_declaration) => {
                     info!("Name space is fine: {} ", rdf_namespace_declaration.name,);
                 }
-                Row::Name(rdf_name_entry) => thing.name_entry(rdf_name_entry),
-                Row::Prefix(rdf_prefix_entry) => thing.prefix_entry(rdf_prefix_entry),
-                Row::Datatype(rdf_datatype_entry) => thing.datatype_entry(rdf_datatype_entry),
+                Row::Name(rdf_name_entry) => {
+                    if let Err(e) = thing.name_entry(rdf_name_entry) {
+                        println!("Error {:?}", e)
+                    }
+                }
+                Row::Prefix(rdf_prefix_entry) => {
+                    if let Err(e) = thing.prefix_entry(rdf_prefix_entry) {
+                        println!("Error {:?}", e)
+                    }
+                }
+                Row::Datatype(rdf_datatype_entry) => {
+                    if let Err(e) = thing.datatype_entry(rdf_datatype_entry) {
+                        println!("Error {:?}", e)
+                    }
+                }
             }
         }
     }
