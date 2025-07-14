@@ -1,8 +1,9 @@
 use crate::error::DeserializeError;
 use crate::lookup::Lookup;
+use crate::proto::rdf_stream_row::Row;
 use crate::proto::{
-    RdfDatatypeEntry, RdfNameEntry, RdfPrefixEntry, RdfQuad, RdfStreamOptions, RdfTriple,
-    rdf_quad as q, rdf_triple as t,
+    RdfDatatypeEntry, RdfNameEntry, RdfPrefixEntry, RdfQuad, RdfStreamFrame, RdfStreamOptions,
+    RdfTriple, rdf_quad as q, rdf_triple as t,
 };
 use crate::to_rdf::ToRdf;
 use paste::paste;
@@ -12,10 +13,11 @@ use paste::paste;
 pub trait ToTerm<Term, TermType> {
     fn to_term(&mut self, thing: Term) -> Result<TermType, DeserializeError>;
 }
+
 macro_rules! implTerm {
     ($k:path, $letter:ident, $($extra:tt)?) => {
         paste! {
-                impl<T: ToRdf> ToTerm<$k, T::Term> for Deserializer<T> {
+                impl<T: ToRdf> ToTerm<$k, T::Term> for Inner<T> {
                     #[inline]
                     fn to_term(&mut self, thing: $k) -> Result<T::Term, DeserializeError> {
                         match thing {
@@ -37,7 +39,7 @@ implTerm!(t::Subject, S, *);
 implTerm!(t::Predicate, P, *);
 implTerm!(t::Object, O, *);
 
-pub struct Deserializer<T: ToRdf> {
+pub struct Inner<T: ToRdf> {
     pub name_table: Lookup,
     pub prefix_table: Lookup,
     pub datatype_table: Lookup,
@@ -50,7 +52,7 @@ pub struct Deserializer<T: ToRdf> {
     pub state: T::State,
 }
 
-impl<T: ToRdf> Deserializer<T> {
+impl<T: ToRdf> Inner<T> {
     pub fn from_options(options: &RdfStreamOptions) -> Self {
         info!("Options {:?}", options);
         Self {
@@ -133,5 +135,104 @@ impl<T: ToRdf> Deserializer<T> {
         }
 
         T::quad(self)
+    }
+}
+
+pub trait RdfHandler<T: ToRdf> {
+    fn handle_triple<'b>(&mut self, triple: T::Triple<'b>);
+    fn handle_quad<'b>(&mut self, quad: T::Quad<'b>);
+}
+
+impl<FT, FQ, T: ToRdf> RdfHandler<T> for (FT, FQ)
+where
+    FT: for<'a> FnMut(T::Triple<'a>),
+    FQ: for<'a> FnMut(T::Quad<'a>),
+{
+    fn handle_triple<'b>(&mut self, triple: <T as ToRdf>::Triple<'b>) {
+        self.0(triple)
+    }
+
+    fn handle_quad<'b>(&mut self, quad: <T as ToRdf>::Quad<'b>) {
+        self.1(quad)
+    }
+}
+
+impl<FT, FQ, T: ToRdf> RdfHandler<T> for &mut (FT, FQ)
+where
+    FT: for<'a> FnMut(T::Triple<'a>),
+    FQ: for<'a> FnMut(T::Quad<'a>),
+{
+    fn handle_triple<'b>(&mut self, triple: <T as ToRdf>::Triple<'b>) {
+        self.0(triple)
+    }
+
+    fn handle_quad<'b>(&mut self, quad: <T as ToRdf>::Quad<'b>) {
+        self.1(quad)
+    }
+}
+
+pub enum Deserializer<T: ToRdf> {
+    Inited(Inner<T>),
+    Empty,
+}
+
+impl<T: ToRdf> Deserializer<T> {
+    pub fn new() -> Self {
+        Deserializer::Empty
+    }
+    pub fn handle_frame<H: RdfHandler<T>>(
+        &mut self,
+        frame: RdfStreamFrame,
+        mut handler: H,
+    ) -> Result<(), DeserializeError> {
+        let rows = frame.rows.into_iter().flat_map(|x| x.row);
+
+        for row in rows {
+            debug!("Row {:?}", row);
+            if let Row::Options(options) = &row {
+                match self {
+                    Deserializer::Inited(_) => {
+                        info!("Didn't expect new options, but I don't care, ignoring");
+                    }
+                    Deserializer::Empty => {
+                        *self = Deserializer::Inited(Inner::from_options(&options));
+                    }
+                }
+            }
+
+            let thing = match self {
+                Deserializer::Inited(deserializer) => deserializer,
+                Deserializer::Empty => {
+                    return Err(DeserializeError::MissingTermInTermTriple);
+                }
+            };
+
+            match row {
+                Row::Options(_) => {}
+                Row::Triple(rdf_triple) => handler.handle_triple(thing.triple(rdf_triple)?),
+                Row::Quad(rdf_quad) => handler.handle_quad(thing.quad(rdf_quad)?),
+                Row::GraphStart(rdf_graph_start) => todo!(),
+                Row::GraphEnd(rdf_graph_end) => todo!(),
+                Row::Namespace(rdf_namespace_declaration) => {
+                    info!("Name space is fine: {} ", rdf_namespace_declaration.name,);
+                }
+                Row::Name(rdf_name_entry) => {
+                    if let Err(e) = thing.name_entry(rdf_name_entry) {
+                        println!("Error {:?}", e)
+                    }
+                }
+                Row::Prefix(rdf_prefix_entry) => {
+                    if let Err(e) = thing.prefix_entry(rdf_prefix_entry) {
+                        println!("Error {:?}", e)
+                    }
+                }
+                Row::Datatype(rdf_datatype_entry) => {
+                    if let Err(e) = thing.datatype_entry(rdf_datatype_entry) {
+                        println!("Error {:?}", e)
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }

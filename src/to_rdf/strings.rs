@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::Deserializer;
+use crate::Inner;
 use crate::deserialize::ToTerm as _;
 use crate::error::DeserializeError;
 use crate::lookup::LookupType;
@@ -23,10 +23,7 @@ impl ToRdf for StringRdf {
     }
 
     #[inline]
-    fn iri(
-        iri: RdfIri,
-        deserializer: &mut Deserializer<Self>,
-    ) -> Result<Self::Term, DeserializeError> {
+    fn iri(iri: RdfIri, deserializer: &mut Inner<Self>) -> Result<Self::Term, DeserializeError> {
         Ok(format!(
             "<{}{}>",
             deserializer
@@ -38,14 +35,14 @@ impl ToRdf for StringRdf {
     }
 
     #[inline]
-    fn bnode(key: String, _: &mut Deserializer<Self>) -> Result<Self::Term, DeserializeError> {
+    fn bnode(key: String, _: &mut Inner<Self>) -> Result<Self::Term, DeserializeError> {
         Ok(format!("_:B{}", key))
     }
 
     #[inline]
     fn literal(
         literal: RdfLiteral,
-        deserializer: &mut Deserializer<Self>,
+        deserializer: &mut Inner<Self>,
     ) -> Result<Self::Term, DeserializeError> {
         let lex = literal.lex;
         Ok(match literal.literal_kind {
@@ -66,7 +63,7 @@ impl ToRdf for StringRdf {
     #[inline]
     fn term_triple(
         triple: RdfTriple,
-        deserializer: &mut Deserializer<Self>,
+        deserializer: &mut Inner<Self>,
     ) -> Result<Self::Term, DeserializeError> {
         let RdfTriple {
             subject,
@@ -95,9 +92,7 @@ impl ToRdf for StringRdf {
     }
 
     #[inline]
-    fn triple<'a>(
-        deserializer: &'a mut Deserializer<Self>,
-    ) -> Result<Self::Triple<'a>, DeserializeError> {
+    fn triple<'a>(deserializer: &'a mut Inner<Self>) -> Result<Self::Triple<'a>, DeserializeError> {
         Ok((
             &deserializer
                 .last_subject
@@ -115,9 +110,7 @@ impl ToRdf for StringRdf {
     }
 
     #[inline]
-    fn quad<'a>(
-        deserializer: &'a mut Deserializer<Self>,
-    ) -> Result<Self::Quad<'a>, DeserializeError> {
+    fn quad<'a>(deserializer: &'a mut Inner<Self>) -> Result<Self::Quad<'a>, DeserializeError> {
         Ok((
             &deserializer
                 .last_subject

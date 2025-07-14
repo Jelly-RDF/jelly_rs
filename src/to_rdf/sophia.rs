@@ -4,7 +4,7 @@ use sophia_api::term::{BnodeId, IriRef, LanguageTag};
 use sophia_term::ArcTerm;
 
 use crate::{
-    Deserializer,
+    Inner,
     deserialize::ToTerm as _,
     error::DeserializeError,
     lookup::LookupType,
@@ -30,10 +30,7 @@ impl ToRdf for SophiaRdf {
         ArcTerm::Iri(IriRef::new_unchecked(Arc::from("")))
     }
 
-    fn iri(
-        iri: RdfIri,
-        deserializer: &mut Deserializer<Self>,
-    ) -> Result<Self::Term, DeserializeError> {
+    fn iri(iri: RdfIri, deserializer: &mut Inner<Self>) -> Result<Self::Term, DeserializeError> {
         let iri = format!(
             "{}{}",
             deserializer
@@ -45,10 +42,7 @@ impl ToRdf for SophiaRdf {
         Ok(ArcTerm::Iri(IriRef::new_unchecked(Arc::from(iri))))
     }
 
-    fn bnode(
-        key: String,
-        deserializer: &mut Deserializer<Self>,
-    ) -> Result<Self::Term, DeserializeError> {
+    fn bnode(key: String, deserializer: &mut Inner<Self>) -> Result<Self::Term, DeserializeError> {
         Ok(deserializer
             .state
             .entry(key)
@@ -60,7 +54,7 @@ impl ToRdf for SophiaRdf {
 
     fn literal(
         literal: RdfLiteral,
-        deserializer: &mut Deserializer<Self>,
+        deserializer: &mut Inner<Self>,
     ) -> Result<Self::Term, DeserializeError> {
         let lex = Arc::from(literal.lex);
         Ok(match literal.literal_kind {
@@ -88,7 +82,7 @@ impl ToRdf for SophiaRdf {
 
     fn term_triple(
         triple: RdfTriple,
-        deserializer: &mut Deserializer<Self>,
+        deserializer: &mut Inner<Self>,
     ) -> Result<Self::Term, DeserializeError> {
         let RdfTriple {
             subject,
@@ -116,7 +110,7 @@ impl ToRdf for SophiaRdf {
         Ok(ArcTerm::Triple(Arc::from([s, p, o])))
     }
 
-    fn triple<'b>(d: &'b mut Deserializer<Self>) -> Result<Self::Triple<'b>, DeserializeError> {
+    fn triple<'b>(d: &'b mut Inner<Self>) -> Result<Self::Triple<'b>, DeserializeError> {
         Ok([
             d.last_subject.clone().expect("subject"),
             d.last_predicate.clone().expect("predicate"),
@@ -124,7 +118,7 @@ impl ToRdf for SophiaRdf {
         ])
     }
 
-    fn quad<'b>(d: &'b mut Deserializer<Self>) -> Result<Self::Quad<'b>, DeserializeError> {
+    fn quad<'b>(d: &'b mut Inner<Self>) -> Result<Self::Quad<'b>, DeserializeError> {
         Ok((
             [
                 d.last_subject.clone().expect("subject"),
