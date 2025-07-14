@@ -211,8 +211,12 @@ impl<T: ToRdf> Deserializer<T> {
                 Row::Options(_) => {}
                 Row::Triple(rdf_triple) => handler.handle_triple(thing.triple(rdf_triple)?),
                 Row::Quad(rdf_quad) => handler.handle_quad(thing.quad(rdf_quad)?),
-                Row::GraphStart(rdf_graph_start) => todo!(),
-                Row::GraphEnd(rdf_graph_end) => todo!(),
+                Row::GraphStart(rdf_graph_start) => {
+                    // TODO: use graph start
+                }
+                Row::GraphEnd(rdf_graph_end) => {
+                    // TODO: use graph end
+                }
                 Row::Namespace(rdf_namespace_declaration) => {
                     info!("Name space is fine: {} ", rdf_namespace_declaration.name,);
                 }

@@ -158,7 +158,19 @@ dependencies = [
  "prost",
  "prost-build",
  "prost-types",
+ "sophia_api",
+ "sophia_inmem",
+ "sophia_iri",
+ "sophia_term",
+ "sophia_turtle",
+ "thiserror",
 ]
+
+[[package]]
+name = "lazy_static"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
@@ -185,6 +197,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
 
 [[package]]
+name = "mownstr"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b33dce847b8623c1f2e473ed3a05e43d0c395e3b93fab62378b6ae94b0a1c42c"
+
+[[package]]
 name = "multimap"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -195,6 +213,21 @@ name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
+
+[[package]]
+name = "oxilangtag"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23f3f87617a86af77fa3691e6350483e7154c2ead9f1261b75130e21ca0f8acb"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "oxiri"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54b4ed3a7192fa19f5f48f99871f2755047fabefd7f222f12a1df1773796a102"
 
 [[package]]
 name = "paste"
@@ -328,6 +361,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
+name = "resiter"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cbc95d56eb1865f69288945759cc0879d60ee68168dce676730275804ad2b276"
+
+[[package]]
+name = "rio_api"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61d0c76ddf8b00cbb4d2c5932d067d49245c2f1f651809bde3cf265033ddb1af"
+
+[[package]]
+name = "rio_turtle"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6f351b77353c7c896f0cd5ced2a25a7e95b5360cb68d1d7c16682ee096d7f40"
+dependencies = [
+ "oxilangtag",
+ "oxiri",
+ "rio_api",
+]
+
+[[package]]
 name = "rustix"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -338,6 +394,100 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "serde"
+version = "1.0.219"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.219"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b0276cf7f2c73365f7157c8123c21cd9a50fbbd844757af28ca1f5925fc2a00"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "sophia_api"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "103a4138290bec38b9b10e0682b613173a102bca9fd2a74b3db25346e22599a3"
+dependencies = [
+ "lazy_static",
+ "mownstr",
+ "regex",
+ "resiter",
+ "serde",
+ "sophia_iri",
+ "thiserror",
+]
+
+[[package]]
+name = "sophia_inmem"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebacba4fa7baed53f89844a5c9e5962d6232a449d5b450b9de72bb67f0203332"
+dependencies = [
+ "sophia_api",
+ "thiserror",
+]
+
+[[package]]
+name = "sophia_iri"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7675ff44ad920ac07fde1b61ff20d3c832d8cb65395416906df90b76631ea95f"
+dependencies = [
+ "lazy_static",
+ "oxiri",
+ "regex",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "sophia_rio"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57a2938da8eeb8645ff616e64ac99af8099772c3e22a955ae5669ceac5372c34"
+dependencies = [
+ "rio_api",
+ "sophia_api",
+ "sophia_iri",
+]
+
+[[package]]
+name = "sophia_term"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51f4c42480d50d14ac7128ad738d28b68368938cb6f507c9505f68875fd0e4db"
+dependencies = [
+ "lazy_static",
+ "sophia_api",
+]
+
+[[package]]
+name = "sophia_turtle"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9ff316c00bed741ba431b8533b2ce08e089ca031c742d9b6cccdf01b7f6ef2d"
+dependencies = [
+ "lazy_static",
+ "oxiri",
+ "regex",
+ "rio_turtle",
+ "sophia_api",
+ "sophia_iri",
+ "sophia_rio",
 ]
 
 [[package]]
@@ -371,6 +521,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
+dependencies = [
+ "thiserror-impl",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
