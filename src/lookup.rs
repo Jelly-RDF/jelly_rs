@@ -19,8 +19,6 @@ pub enum LookupType {
     Invalid,
 }
 
-static EMPTY: Cow<'static, str> = Cow::Borrowed("");
-
 impl LookupType {
     fn apply(&self, value: usize) -> Result<usize, LookupError> {
         Ok(match self {

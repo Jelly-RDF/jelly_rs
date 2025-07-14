@@ -1,4 +1,4 @@
-use crate::Deserializer;
+use crate::Inner;
 use crate::error::DeserializeError;
 use crate::proto::{RdfIri, RdfLiteral, RdfTriple};
 
@@ -23,27 +23,17 @@ pub trait ToRdf: Sized {
 
     fn default_term() -> Self::Term;
 
-    fn iri(
-        iri: RdfIri,
-        deserializer: &mut Deserializer<Self>,
-    ) -> Result<Self::Term, DeserializeError>;
-    fn bnode(
-        key: String,
-        deserializer: &mut Deserializer<Self>,
-    ) -> Result<Self::Term, DeserializeError>;
+    fn iri(iri: RdfIri, deserializer: &mut Inner<Self>) -> Result<Self::Term, DeserializeError>;
+    fn bnode(key: String, deserializer: &mut Inner<Self>) -> Result<Self::Term, DeserializeError>;
     fn literal(
         literal: RdfLiteral,
-        deserializer: &mut Deserializer<Self>,
+        deserializer: &mut Inner<Self>,
     ) -> Result<Self::Term, DeserializeError>;
     fn term_triple(
         triple: RdfTriple,
-        deserializer: &mut Deserializer<Self>,
+        deserializer: &mut Inner<Self>,
     ) -> Result<Self::Term, DeserializeError>;
 
-    fn triple<'b>(
-        deserializer: &'b mut Deserializer<Self>,
-    ) -> Result<Self::Triple<'b>, DeserializeError>;
-    fn quad<'b>(
-        deserializer: &'b mut Deserializer<Self>,
-    ) -> Result<Self::Quad<'b>, DeserializeError>;
+    fn triple<'b>(deserializer: &'b mut Inner<Self>) -> Result<Self::Triple<'b>, DeserializeError>;
+    fn quad<'b>(deserializer: &'b mut Inner<Self>) -> Result<Self::Quad<'b>, DeserializeError>;
 }

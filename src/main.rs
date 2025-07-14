@@ -1,142 +1,32 @@
-#[macro_use]
-extern crate log;
-
-use std::{
-    fs::File,
-    io::{BufReader, Read},
-};
+use std::fs::File;
 
 use jelly::{
-    Deserializer,
-    proto::{RdfStreamFrame, rdf_stream_row::Row},
-    to_rdf::StringRdf,
+    FrameReader,
+    deserialize::Deserializer,
+    to_rdf::{StringRdf, ToRdf},
 };
-use prost::Message as _;
-
-/// Read a Protobuf varint from an std::io::Read
-fn read_varint<R: Read>(reader: &mut R) -> std::io::Result<u64> {
-    let mut result = 0u64;
-    let mut shift = 0u32;
-
-    for _ in 0..10 {
-        let mut byte = [0u8];
-        if reader.read_exact(&mut byte).is_err() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof,
-                "EOF during varint",
-            ));
-        }
-
-        let b = byte[0];
-        result |= ((b & 0x7F) as u64) << shift;
-
-        if b & 0x80 == 0 {
-            return Ok(result);
-        }
-
-        shift += 7;
-    }
-
-    Err(std::io::Error::new(
-        std::io::ErrorKind::InvalidData,
-        "Varint too long",
-    ))
-}
-
-struct Generator<R> {
-    reader: BufReader<R>,
-}
-
-impl<R: Read> Iterator for Generator<R> {
-    type Item = RdfStreamFrame;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // Decode a varint (length prefix)
-        let len = match read_varint(&mut self.reader) {
-            Ok(l) => l as usize,
-            Err(_) => return None,
-        };
-
-        let mut buf = vec![0; len];
-
-        // Read the exact number of bytes for the message
-        self.reader.read_exact(&mut buf).ok()?;
-
-        // Decode the message from the buffer
-        let frame = RdfStreamFrame::decode(&*buf).ok()?;
-        Some(frame)
-    }
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init(); // Initialize logger, reads RUST_LOG env var
     let args: Vec<_> = std::env::args().into_iter().collect::<Vec<_>>();
     let file_name = args.get(1).expect("A file argument");
     let file = File::open(file_name)?;
-    let generator = Generator {
-        reader: BufReader::new(file),
-    };
+    let generator = FrameReader::new(file);
 
-    let mut m_thing: Option<Deserializer<StringRdf>> = None;
+    let mut des = Deserializer::<StringRdf>::new();
 
+    let mut h = (
+        |(s, p, o): <StringRdf as ToRdf>::Triple<'_>| println!("Triple {} {} {} .", s, p, o),
+        |(s, p, o, g): <StringRdf as ToRdf>::Quad<'_>| {
+            if let Some(g) = g {
+                println!("Quad {} {} {} {} .", s, p, o, g);
+            } else {
+                println!("Quad {} {} {} .", s, p, o);
+            }
+        },
+    );
     for frame in generator {
-        let rows = frame.rows.into_iter().flat_map(|x| x.row);
-
-        for row in rows {
-            debug!("Row {:?}", row);
-            if let Row::Options(options) = &row {
-                if m_thing.is_some() {
-                    info!("Didn't expect new options, but I don't care, ignoring");
-                } else {
-                    m_thing = Some(Deserializer::from_options(&options));
-                }
-            }
-
-            let thing = m_thing.as_mut().unwrap();
-            match row {
-                Row::Options(_) => {}
-                Row::Triple(rdf_triple) => match thing.triple(rdf_triple) {
-                    Ok((s, p, o)) => {
-                        println!("{} {} {} .", s, p, o);
-                    }
-                    Err(e) => {
-                        println!("Error {:?}", e);
-                    }
-                },
-                Row::Quad(rdf_quad) => match thing.quad(rdf_quad) {
-                    Ok((s, p, o, Some(g))) => {
-                        println!("{} {} {} {} .", s, p, o, g);
-                    }
-
-                    Ok((s, p, o, None)) => {
-                        println!("{} {} {} .", s, p, o,);
-                    }
-                    Err(e) => {
-                        println!("Error {:?}", e);
-                    }
-                },
-                Row::GraphStart(rdf_graph_start) => todo!(),
-                Row::GraphEnd(rdf_graph_end) => todo!(),
-                Row::Namespace(rdf_namespace_declaration) => {
-                    info!("Name space is fine: {} ", rdf_namespace_declaration.name,);
-                }
-                Row::Name(rdf_name_entry) => {
-                    if let Err(e) = thing.name_entry(rdf_name_entry) {
-                        println!("Error {:?}", e)
-                    }
-                }
-                Row::Prefix(rdf_prefix_entry) => {
-                    if let Err(e) = thing.prefix_entry(rdf_prefix_entry) {
-                        println!("Error {:?}", e)
-                    }
-                }
-                Row::Datatype(rdf_datatype_entry) => {
-                    if let Err(e) = thing.datatype_entry(rdf_datatype_entry) {
-                        println!("Error {:?}", e)
-                    }
-                }
-            }
-        }
+        des.handle_frame(frame, &mut h)?;
     }
 
     Ok(())
