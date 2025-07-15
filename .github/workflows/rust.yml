@@ -25,6 +25,13 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "31.x"
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: Build
         run: cargo build --verbose
 
