@@ -1,19 +1,19 @@
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-use sophia_api::term::{BnodeId, IriRef, LanguageTag};
+use sophia_api::term::{BnodeId, IriRef, LanguageTag, TermKind};
 use sophia_term::ArcTerm;
 
 use crate::{
     Inner,
     deserialize::ToTerm as _,
-    error::DeserializeError,
+    error::{DeserializeError, TermLocation},
     lookup::LookupType,
     proto::{RdfIri, RdfLiteral, RdfTriple, rdf_literal::LiteralKind},
 };
 
 use super::ToRdf;
 
-const DEFAULT_DATA_TYPE: &'static str = "";
+const DEFAULT_DATA_TYPE: &'static str = "http://www.w3.org/2001/XMLSchema#string";
 
 static EMPTY: Cow<'static, str> = Cow::Borrowed("");
 pub struct SophiaRdf;
@@ -59,22 +59,21 @@ impl ToRdf for SophiaRdf {
         let lex = Arc::from(literal.lex);
         Ok(match literal.literal_kind {
             Some(LiteralKind::Langtag(tag)) => {
-                let lang = LanguageTag::new_unchecked(Arc::from(tag));
+                let lang = LanguageTag::new(Arc::from(tag))?;
                 ArcTerm::Literal(sophia_term::GenericLiteral::LanguageString(lex, lang))
             }
             Some(LiteralKind::Datatype(tag)) => {
-                let datatype = IriRef::new_unchecked(Arc::from(
+                let datatype = IriRef::new(Arc::from(
                     deserializer
                         .datatype_table
                         .get(tag, LookupType::Invalid)?
                         .to_string(),
-                ));
+                ))?;
 
                 ArcTerm::Literal(sophia_term::GenericLiteral::Typed(lex, datatype))
             }
             None => {
-                let datatype = IriRef::new_unchecked(Arc::from(DEFAULT_DATA_TYPE));
-
+                let datatype = IriRef::new(Arc::from(DEFAULT_DATA_TYPE))?;
                 ArcTerm::Literal(sophia_term::GenericLiteral::Typed(lex, datatype))
             }
         })
@@ -92,19 +91,25 @@ impl ToRdf for SophiaRdf {
         let s = if let Some(s) = subject {
             deserializer.to_term(s)?
         } else {
-            return Err(DeserializeError::MissingTermInTermTriple);
+            return Err(DeserializeError::MissingTermTermTriple(
+                TermLocation::Subject,
+            ));
         };
 
         let p = if let Some(s) = predicate {
             deserializer.to_term(s)?
         } else {
-            return Err(DeserializeError::MissingTermInTermTriple);
+            return Err(DeserializeError::MissingTermTermTriple(
+                TermLocation::Predicate,
+            ));
         };
 
         let o = if let Some(s) = object {
             deserializer.to_term(s)?
         } else {
-            return Err(DeserializeError::MissingTermInTermTriple);
+            return Err(DeserializeError::MissingTermTermTriple(
+                TermLocation::Object,
+            ));
         };
 
         Ok(ArcTerm::Triple(Arc::from([s, p, o])))
@@ -112,18 +117,30 @@ impl ToRdf for SophiaRdf {
 
     fn triple<'b>(d: &'b mut Inner<Self>) -> Result<Self::Triple<'b>, DeserializeError> {
         Ok([
-            d.last_subject.clone().expect("subject"),
-            d.last_predicate.clone().expect("predicate"),
-            d.last_object.clone().expect("object"),
+            d.last_subject
+                .clone()
+                .ok_or(DeserializeError::MissingTerm(TermLocation::Subject))?,
+            d.last_predicate
+                .clone()
+                .ok_or(DeserializeError::MissingTerm(TermLocation::Predicate))?,
+            d.last_object
+                .clone()
+                .ok_or(DeserializeError::MissingTerm(TermLocation::Object))?,
         ])
     }
 
     fn quad<'b>(d: &'b mut Inner<Self>) -> Result<Self::Quad<'b>, DeserializeError> {
         Ok((
             [
-                d.last_subject.clone().expect("subject"),
-                d.last_predicate.clone().expect("predicate"),
-                d.last_object.clone().expect("object"),
+                d.last_subject
+                    .clone()
+                    .ok_or(DeserializeError::MissingTerm(TermLocation::Subject))?,
+                d.last_predicate
+                    .clone()
+                    .ok_or(DeserializeError::MissingTerm(TermLocation::Predicate))?,
+                d.last_object
+                    .clone()
+                    .ok_or(DeserializeError::MissingTerm(TermLocation::Object))?,
             ],
             d.last_graph.clone(),
         ))

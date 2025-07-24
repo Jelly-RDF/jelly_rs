@@ -65,6 +65,7 @@ impl Lookup {
         if id > self.size {
             return Err(LookupError::LookupTableTooSmall(self.size));
         }
+
         self.arr[id] = Some(Cow::Owned(str));
         Ok(())
     }

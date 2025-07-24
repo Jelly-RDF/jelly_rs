@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 
 use crate::Inner;
-use crate::deserialize::ToTerm as _;
-use crate::error::DeserializeError;
+use crate::deserialize::{RdfHandler, ToTerm as _};
+use crate::error::{DeserializeError, TermLocation};
 use crate::lookup::LookupType;
 use crate::proto::{RdfIri, RdfLiteral, RdfTriple, rdf_literal::LiteralKind};
 
 use super::ToRdf;
 
-static EMPTY: Cow<'static, str> = Cow::Borrowed("");
+static EMPTY: Cow<'static, str> = Cow::Borrowed("http://www.w3.org/2001/XMLSchema#string");
 pub struct StringRdf;
 impl ToRdf for StringRdf {
     type Term = String;
@@ -73,19 +73,25 @@ impl ToRdf for StringRdf {
         let s = if let Some(s) = subject {
             deserializer.to_term(s)?
         } else {
-            return Err(DeserializeError::MissingTermInTermTriple);
+            return Err(DeserializeError::MissingTermTermTriple(
+                TermLocation::Subject,
+            ));
         };
 
         let p = if let Some(s) = predicate {
             deserializer.to_term(s)?
         } else {
-            return Err(DeserializeError::MissingTermInTermTriple);
+            return Err(DeserializeError::MissingTermTermTriple(
+                TermLocation::Predicate,
+            ));
         };
 
         let o = if let Some(s) = object {
             deserializer.to_term(s)?
         } else {
-            return Err(DeserializeError::MissingTermInTermTriple);
+            return Err(DeserializeError::MissingTermTermTriple(
+                TermLocation::Object,
+            ));
         };
 
         Ok(format!("<< {} {} {} >>", s, p, o))
@@ -97,15 +103,15 @@ impl ToRdf for StringRdf {
             &deserializer
                 .last_subject
                 .as_ref()
-                .expect("subject to be present"),
+                .ok_or(DeserializeError::MissingTerm(TermLocation::Subject))?,
             &deserializer
                 .last_predicate
                 .as_ref()
-                .expect("predicate to be present"),
+                .ok_or(DeserializeError::MissingTerm(TermLocation::Predicate))?,
             &deserializer
                 .last_object
                 .as_ref()
-                .expect("object to be present"),
+                .ok_or(DeserializeError::MissingTerm(TermLocation::Object))?,
         ))
     }
 
@@ -115,16 +121,31 @@ impl ToRdf for StringRdf {
             &deserializer
                 .last_subject
                 .as_ref()
-                .expect("subject to be present"),
+                .ok_or(DeserializeError::MissingTerm(TermLocation::Subject))?,
             &deserializer
                 .last_predicate
                 .as_ref()
-                .expect("predicate to be present"),
+                .ok_or(DeserializeError::MissingTerm(TermLocation::Predicate))?,
             &deserializer
                 .last_object
                 .as_ref()
-                .expect("object to be present"),
+                .ok_or(DeserializeError::MissingTerm(TermLocation::Object))?,
             deserializer.last_graph.as_ref().map(|x| x.as_str()),
         ))
+    }
+}
+
+impl<'a> RdfHandler<StringRdf> for &mut Vec<(String, String, String, Option<String>)> {
+    fn handle_triple<'b>(&mut self, (s, p, o): <StringRdf as ToRdf>::Triple<'b>) {
+        self.push((s.to_string(), p.to_string(), o.to_string(), None));
+    }
+
+    fn handle_quad<'b>(&mut self, (s, p, o, q): <StringRdf as ToRdf>::Quad<'b>) {
+        self.push((
+            s.to_string(),
+            p.to_string(),
+            o.to_string(),
+            q.map(String::from),
+        ));
     }
 }
