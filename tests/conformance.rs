@@ -21,16 +21,11 @@ fn read_manifested_file(input: &str) -> Vec<u8> {
 
 #[cfg(test)]
 fn test_positive(input: &str, result: &[&str]) {
-    use std::collections::HashSet;
-
     use jelly::{deserialize::StateHandler, to_rdf::SophiaRdf};
     use sophia_inmem::{dataset::GenericFastDataset, index::SimpleTermIndex};
     type G = GenericFastDataset<SimpleTermIndex<usize>>;
 
-    use sophia_api::{
-        prelude::{Dataset, MutableDataset},
-        source::QuadSource,
-    };
+    use sophia_api::{prelude::MutableDataset, source::QuadSource};
 
     let content = read_manifested_file(input);
     let frames = FrameReader::new(Cursor::new(content));
@@ -71,6 +66,7 @@ fn test_positive(input: &str, result: &[&str]) {
         };
 
         let mut expected_buf = Cursor::new(Vec::<u8>::new());
+
         sophia_c14n::rdfc10::normalize(&expected_quads, &mut expected_buf)
             .expect("expected canonical, works (expected)");
 

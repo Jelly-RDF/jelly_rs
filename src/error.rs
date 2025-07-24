@@ -1,7 +1,4 @@
-use std::fmt::Display;
-
 use prost::UnknownEnumValue;
-use sophia_api::term::TermKind;
 use thiserror::Error;
 
 use crate::proto::PhysicalStreamType;

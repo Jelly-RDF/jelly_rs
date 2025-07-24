@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-use sophia_api::term::{BnodeId, IriRef, LanguageTag, TermKind};
+use sophia_api::term::{BnodeId, IriRef, LanguageTag};
 use sophia_term::ArcTerm;
 
 use crate::{
