@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use sophia_api::term::{BnodeId, IriRef, LanguageTag};
 use sophia_term::ArcTerm;
@@ -15,7 +15,6 @@ use super::ToRdf;
 
 const DEFAULT_DATA_TYPE: &'static str = "http://www.w3.org/2001/XMLSchema#string";
 
-static EMPTY: Cow<'static, str> = Cow::Borrowed("");
 pub struct SophiaRdf;
 impl ToRdf for SophiaRdf {
     type Term = ArcTerm;
@@ -35,8 +34,7 @@ impl ToRdf for SophiaRdf {
             "{}{}",
             deserializer
                 .prefix_table
-                .get(iri.prefix_id, LookupType::Stay)
-                .unwrap_or(&EMPTY),
+                .get(iri.prefix_id, LookupType::Stay)?,
             deserializer.name_table.get(iri.name_id, LookupType::Inc)?
         );
         Ok(ArcTerm::Iri(IriRef::new_unchecked(Arc::from(iri))))

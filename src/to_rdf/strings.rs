@@ -28,8 +28,7 @@ impl ToRdf for StringRdf {
             "<{}{}>",
             deserializer
                 .prefix_table
-                .get(iri.prefix_id, LookupType::Stay)
-                .unwrap_or(&EMPTY),
+                .get(iri.prefix_id, LookupType::Stay)?,
             deserializer.name_table.get(iri.name_id, LookupType::Inc)?
         ))
     }

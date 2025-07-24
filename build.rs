@@ -249,6 +249,7 @@ fn setup_from_jelly_tests() {
                     r#"
 #[test]
             fn {}_{}() {{
+                crate::init_logger();
                 crate::test_positive({:?}, &{:?});
             }}
 "#,
@@ -266,6 +267,7 @@ fn setup_from_jelly_tests() {
                     r#"
 #[test]
             fn {}_{}() {{
+                crate::init_logger();
                 crate::test_negative({:?});
             }}
 "#,
