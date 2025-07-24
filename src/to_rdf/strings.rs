@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::Inner;
 use crate::deserialize::{RdfHandler, ToTerm as _};
 use crate::error::{DeserializeError, TermLocation};
@@ -7,9 +5,8 @@ use crate::lookup::LookupType;
 use crate::proto::{RdfIri, RdfLiteral, RdfTriple, rdf_literal::LiteralKind};
 
 use super::ToRdf;
-
-static EMPTY: Cow<'static, str> = Cow::Borrowed("http://www.w3.org/2001/XMLSchema#string");
 pub struct StringRdf;
+
 impl ToRdf for StringRdf {
     type Term = String;
 

@@ -45,6 +45,7 @@ pub mod rdft {
       approval, Approved, TestTurtleEval, TestTurtlePositiveSyntax, TestTurtleNegativeSyntax
     }
 }
+#[allow(unused)]
 #[derive(Debug)]
 struct BasicInfo {
     ns: String,

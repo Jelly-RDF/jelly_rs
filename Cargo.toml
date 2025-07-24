@@ -17,8 +17,6 @@ paste = "1.0.15"
 
 [dev-dependencies]
 sophia_turtle = "0.9.0"
-sophia_c14n = "0.9.0"
-sophia_inmem = "0.9.0"
 
 [build-dependencies]
 prost-build = "0.14.1"

@@ -12,7 +12,6 @@ use jelly::{
 };
 
 use jelly::{deserialize::StateHandler, to_rdf::SophiaRdf};
-use sophia_inmem::{dataset::GenericFastDataset, index::SimpleTermIndex};
 
 use sophia_api::{
     prelude::MutableDataset,
