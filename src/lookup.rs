@@ -30,6 +30,8 @@ impl LookupType {
     }
 }
 
+static EMPTY: Cow<'static, str> = Cow::Borrowed("");
+
 impl Lookup {
     pub fn new(size: u32) -> Self {
         Self {
@@ -41,8 +43,18 @@ impl Lookup {
     }
 
     pub fn get(&mut self, index: u32, ty: LookupType) -> Result<&Cow<'static, str>, LookupError> {
+        trace!(
+            "Lookup index {} size {} arr len {}",
+            index,
+            self.size,
+            self.arr.len()
+        );
         if self.size == 0 {
-            return Err(LookupError::LookupFromEmptyTable);
+            return Ok(&EMPTY);
+        }
+        if index as usize > self.size {
+            trace!("LookupTableTooSmall");
+            return Err(LookupError::LookupTableTooSmall(index as usize));
         }
         let mut id = index as usize;
         if index == 0 {
@@ -65,6 +77,7 @@ impl Lookup {
         if id > self.size {
             return Err(LookupError::LookupTableTooSmall(self.size));
         }
+
         self.arr[id] = Some(Cow::Owned(str));
         Ok(())
     }

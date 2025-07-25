@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     env, fs,
     path::{self, PathBuf},
 };
@@ -45,9 +45,11 @@ pub mod rdft {
       approval, Approved, TestTurtleEval, TestTurtlePositiveSyntax, TestTurtleNegativeSyntax
     }
 }
+#[allow(unused)]
 #[derive(Debug)]
 struct BasicInfo {
-    subject: String,
+    ns: String,
+    id: String,
     name: String,
     comment: String,
     approval: String,
@@ -55,17 +57,7 @@ struct BasicInfo {
     result: Option<Vec<String>>,
 }
 
-fn make_unique(sanitized: String, existing: &mut HashSet<String>) -> String {
-    let mut name = sanitized.to_string();
-    let mut counter = 1;
-    while existing.contains(&name) {
-        name = format!("{}_{}", sanitized, counter);
-        counter += 1;
-    }
-    existing.insert(name.clone());
-    name
-}
-fn sanitize_test_name(original: &str, existing: &mut HashSet<String>) -> String {
+fn sanitize_test_name(original: &str) -> String {
     let mut s = String::new();
     // Prefix if first char is not a letter or underscore
     if !original
@@ -92,7 +84,7 @@ fn sanitize_test_name(original: &str, existing: &mut HashSet<String>) -> String 
         s.pop();
     }
 
-    make_unique(s, existing)
+    s
 }
 
 fn get_result<T: Term + Clone>(graph: &G, subj: T) -> Option<Vec<String>> {
@@ -128,11 +120,7 @@ fn get_result<T: Term + Clone>(graph: &G, subj: T) -> Option<Vec<String>> {
 
     Some(out)
 }
-fn basic_info<T: Term + Clone>(
-    graph: &G,
-    subj: T,
-    existing: &mut HashSet<String>,
-) -> Option<BasicInfo> {
+fn basic_info<T: Term + Clone>(graph: &G, subj: T) -> Option<BasicInfo> {
     let name = graph
         .quads_matching([subj.clone()], [mf::name], Any, Any)
         .next()?
@@ -166,24 +154,30 @@ fn basic_info<T: Term + Clone>(
 
     let result = get_result(graph, subj);
 
+    let to_skip = "https://w3id.org/jelly/dev/tests/rdf/from_jelly/".len();
+    let (ns, id) = subject[to_skip..]
+        .split_once('/')
+        .expect("two parts split by /");
+
     Some(BasicInfo {
-        name: sanitize_test_name(&name, existing),
+        name: sanitize_test_name(&name),
         comment,
         approval,
         action,
         result,
-        subject,
+        id: id.to_string(),
+        ns: ns.to_string(),
     })
 }
 
 type G = GenericFastDataset<SimpleTermIndex<usize>>;
-fn positive(graph: &G, existing: &mut HashSet<String>) -> Vec<BasicInfo> {
+fn positive(graph: &G) -> Vec<BasicInfo> {
     let mut out = Vec::new();
     for (_, [subj, _, _]) in graph
         .quads_matching(Any, [rdf::type_], [jellyt::TestPositive], Any)
         .flatten()
     {
-        match basic_info(graph, subj, existing) {
+        match basic_info(graph, subj) {
             Some(info) => out.push(info),
             None => {
                 println!("cargo:warning=Info failed for iri {:?}", subj);
@@ -193,13 +187,13 @@ fn positive(graph: &G, existing: &mut HashSet<String>) -> Vec<BasicInfo> {
     out
 }
 
-fn negative(graph: &G, existing: &mut HashSet<String>) -> Vec<BasicInfo> {
+fn negative(graph: &G) -> Vec<BasicInfo> {
     let mut out = Vec::new();
     for (_, [subj, _, _]) in graph
         .quads_matching(Any, [rdf::type_], [jellyt::TestNegative], Any)
         .flatten()
     {
-        match basic_info(graph, subj, existing) {
+        match basic_info(graph, subj) {
             Some(info) => out.push(info),
             None => {
                 println!("cargo:warning=Info failed for iri {:?}", subj);
@@ -215,6 +209,7 @@ fn setup_from_jelly_tests() {
     let location = path.to_str().unwrap();
 
     println!("cargo:warning=Location {}", location);
+
     let tests_manifest = fs::read_to_string(&path).expect("Failed to read spec");
 
     let base = Iri::new(format!("file://{}", location)).unwrap();
@@ -225,38 +220,66 @@ fn setup_from_jelly_tests() {
         .collect_quads()
         .expect("valid turtle");
 
-    let mut existing = HashSet::new();
-    let mut generated = String::from("\n #[cfg(test)]mod positive { \n ");
-    let positivies = positive(&quads, &mut existing);
+    let mut generated = String::new();
+    let positivies = positive(&quads);
+
+    let mut nses = HashSet::new();
+    let mut pos_map: HashMap<String, Vec<BasicInfo>> = HashMap::new();
+    let mut neg_map: HashMap<String, Vec<BasicInfo>> = HashMap::new();
 
     for p in positivies {
-        generated += &format!(
-            r#"
+        // You can just make this &str without the replace ...
+
+        nses.insert(p.ns.clone());
+        let entry = pos_map.entry(p.ns.clone()).or_default();
+        entry.push(p);
+    }
+
+    for p in negative(&quads) {
+        nses.insert(p.ns.clone());
+        let entry = neg_map.entry(p.ns.clone()).or_default();
+        entry.push(p);
+    }
+
+    for ns in nses {
+        generated += &format!(r#" #[cfg(test)]mod {} {{"#, ns);
+
+        if let Some(poses) = pos_map.get(&ns) {
+            for p in poses {
+                generated += &format!(
+                    r#"
 #[test]
-            fn {}() {{
+            fn {}_{}() {{
+                crate::init_logger();
                 crate::test_positive({:?}, &{:?});
             }}
 "#,
-            p.name,
-            p.action,
-            p.result.unwrap_or(vec![])
-        );
-    }
+                    p.id,
+                    p.name,
+                    p.action,
+                    p.result.as_ref().unwrap_or(&vec![])
+                );
+            }
+        }
 
-    generated += "} #[cfg(test)]mod negative {";
-
-    for p in negative(&quads, &mut existing) {
-        generated += &format!(
-            r#"
+        if let Some(neges) = neg_map.get(&ns) {
+            for p in neges {
+                generated += &format!(
+                    r#"
 #[test]
-            fn {}() {{
+            fn {}_{}() {{
+                crate::init_logger();
                 crate::test_negative({:?});
             }}
 "#,
-            p.name, p.action,
-        );
+                    p.id, p.name, p.action,
+                );
+            }
+        }
+
+        generated += &format!(r#"}}"#);
     }
-    generated += "}";
+
     fs::write(out_dir.join("generated_tests.rs"), generated)
         .expect("Failed to write generated tests");
 }

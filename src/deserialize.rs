@@ -1,9 +1,11 @@
-use crate::error::DeserializeError;
+use crate::error::{ConfigError, DeserializeError, MessageType, PhysicalStreamError, TermLocation};
 use crate::lookup::Lookup;
+
+use crate::proto::rdf_quad::Graph;
 use crate::proto::rdf_stream_row::Row;
 use crate::proto::{
-    RdfDatatypeEntry, RdfNameEntry, RdfPrefixEntry, RdfQuad, RdfStreamFrame, RdfStreamOptions,
-    RdfTriple, rdf_quad as q, rdf_triple as t,
+    PhysicalStreamType, RdfDatatypeEntry, RdfNameEntry, RdfPrefixEntry, RdfQuad, RdfStreamFrame,
+    RdfStreamOptions, RdfTriple, rdf_graph_start as gs, rdf_quad as q, rdf_triple as t,
 };
 use crate::to_rdf::ToRdf;
 use paste::paste;
@@ -50,12 +52,31 @@ pub struct Inner<T: ToRdf> {
     pub last_graph: Option<T::Term>,
 
     pub state: T::State,
+
+    physical_type: PhysicalStreamType,
+    graph_started: bool,
 }
 
 impl<T: ToRdf> Inner<T> {
-    pub fn from_options(options: &RdfStreamOptions) -> Self {
+    pub fn from_options(options: &RdfStreamOptions) -> Result<Self, ConfigError> {
         info!("Options {:?}", options);
-        Self {
+        let physical_type = PhysicalStreamType::try_from(options.physical_type)?;
+        if physical_type == PhysicalStreamType::Unspecified {
+            return Err(ConfigError::InvalidPhysicalType(physical_type));
+        }
+        if let Some(table_error) = ConfigError::name_table(options.max_name_table_size) {
+            return Result::Err(table_error);
+        };
+
+        if let Some(table_error) = ConfigError::prefix_table(options.max_prefix_table_size) {
+            return Result::Err(table_error);
+        };
+
+        if let Some(table_error) = ConfigError::datatype_table(options.max_datatype_table_size) {
+            return Result::Err(table_error);
+        };
+
+        Ok(Self {
             name_table: Lookup::new(options.max_name_table_size),
             datatype_table: Lookup::new(options.max_datatype_table_size),
             prefix_table: Lookup::new(options.max_prefix_table_size),
@@ -66,7 +87,11 @@ impl<T: ToRdf> Inner<T> {
             last_graph: None,
 
             state: T::State::default(),
-        }
+
+            physical_type,
+
+            graph_started: false,
+        })
     }
 
     #[inline]
@@ -117,6 +142,26 @@ impl<T: ToRdf> Inner<T> {
     }
 
     #[inline]
+    pub fn triple_with_graph<'a>(
+        &'a mut self,
+        triple: RdfTriple,
+    ) -> Result<T::Quad<'a>, DeserializeError> {
+        if let Some(subject) = triple.subject {
+            self.last_subject = Some(self.to_term(subject)?);
+        }
+
+        if let Some(predicate) = triple.predicate {
+            self.last_predicate = Some(self.to_term(predicate)?);
+        }
+
+        if let Some(object) = triple.object {
+            self.last_object = Some(self.to_term(object)?);
+        }
+
+        T::quad(self)
+    }
+
+    #[inline]
     pub fn quad<'a>(&'a mut self, quad: RdfQuad) -> Result<T::Quad<'a>, DeserializeError> {
         if let Some(subject) = quad.subject {
             self.last_subject = Some(self.to_term(subject)?);
@@ -141,6 +186,30 @@ impl<T: ToRdf> Inner<T> {
 pub trait RdfHandler<T: ToRdf> {
     fn handle_triple<'b>(&mut self, triple: T::Triple<'b>);
     fn handle_quad<'b>(&mut self, quad: T::Quad<'b>);
+}
+
+pub struct StateHandler<S, FT, FQ> {
+    pub state: S,
+    ft: FT,
+    fq: FQ,
+}
+impl<S, FT, FQ> StateHandler<S, FT, FQ> {
+    pub fn new(state: S, ft: FT, fq: FQ) -> Self {
+        Self { state, ft, fq }
+    }
+}
+impl<S, FT, FQ, T: ToRdf> RdfHandler<T> for StateHandler<S, FT, FQ>
+where
+    FT: for<'a> FnMut(T::Triple<'a>, &mut S),
+    FQ: for<'a> FnMut(T::Quad<'a>, &mut S),
+{
+    fn handle_triple<'b>(&mut self, triple: <T as ToRdf>::Triple<'b>) {
+        (self.ft)(triple, &mut self.state);
+    }
+
+    fn handle_quad<'b>(&mut self, quad: <T as ToRdf>::Quad<'b>) {
+        (self.fq)(quad, &mut self.state);
+    }
 }
 
 impl<FT, FQ, T: ToRdf> RdfHandler<T> for (FT, FQ)
@@ -184,7 +253,7 @@ impl<T: ToRdf> Deserializer<T> {
         &mut self,
         frame: RdfStreamFrame,
         mut handler: H,
-    ) -> Result<(), DeserializeError> {
+    ) -> Result<H, DeserializeError> {
         let rows = frame.rows.into_iter().flat_map(|x| x.row);
 
         for row in rows {
@@ -195,7 +264,7 @@ impl<T: ToRdf> Deserializer<T> {
                         info!("Didn't expect new options, but I don't care, ignoring");
                     }
                     Deserializer::Empty => {
-                        *self = Deserializer::Inited(Inner::from_options(&options));
+                        *self = Deserializer::Inited(Inner::from_options(&options)?);
                     }
                 }
             }
@@ -203,40 +272,96 @@ impl<T: ToRdf> Deserializer<T> {
             let thing = match self {
                 Deserializer::Inited(deserializer) => deserializer,
                 Deserializer::Empty => {
-                    return Err(DeserializeError::MissingTermInTermTriple);
+                    return Err(DeserializeError::ConfigError(ConfigError::NotSet));
                 }
             };
 
             match row {
                 Row::Options(_) => {}
-                Row::Triple(rdf_triple) => handler.handle_triple(thing.triple(rdf_triple)?),
-                Row::Quad(rdf_quad) => handler.handle_quad(thing.quad(rdf_quad)?),
-                Row::GraphStart(rdf_graph_start) => {
-                    // TODO: use graph start
+                Row::Triple(rdf_triple) => {
+                    if thing.physical_type == PhysicalStreamType::Graphs {
+                        if !thing.graph_started {
+                            return Err(DeserializeError::PhysicalStreamError(
+                                PhysicalStreamError::NotYetSet {
+                                    detected: thing.physical_type,
+                                    expected: MessageType::GraphStart,
+                                },
+                            ));
+                        } else {
+                            handler.handle_quad(thing.triple_with_graph(rdf_triple)?);
+                        }
+                    } else if thing.physical_type == PhysicalStreamType::Triples {
+                        handler.handle_triple(thing.triple(rdf_triple)?)
+                    } else {
+                        return Err(DeserializeError::PhysicalStreamError(
+                            PhysicalStreamError::IncorrectType {
+                                detected: thing.physical_type,
+                                incoming: MessageType::Triple,
+                            },
+                        ));
+                    }
                 }
-                Row::GraphEnd(rdf_graph_end) => {
-                    // TODO: use graph end
+                Row::Quad(rdf_quad) => {
+                    println!("Quad");
+                    if thing.physical_type == PhysicalStreamType::Quads {
+                        handler.handle_quad(thing.quad(rdf_quad)?)
+                    } else {
+                        return Err(DeserializeError::PhysicalStreamError(
+                            PhysicalStreamError::IncorrectType {
+                                detected: thing.physical_type,
+                                incoming: MessageType::Quad,
+                            },
+                        ));
+                    }
+                }
+                Row::GraphStart(rdf_graph_start) => {
+                    println!("Graph start! {:?}", rdf_graph_start.graph);
+
+                    if thing.physical_type == PhysicalStreamType::Graphs {
+                        let g = match rdf_graph_start.graph {
+                            Some(gs::Graph::GIri(iri)) => Graph::GIri(iri),
+                            Some(gs::Graph::GDefaultGraph(iri)) => Graph::GDefaultGraph(iri),
+                            Some(gs::Graph::GBnode(iri)) => Graph::GBnode(iri),
+                            Some(gs::Graph::GLiteral(iri)) => Graph::GLiteral(iri),
+                            None => {
+                                return Result::Err(DeserializeError::MissingTerm(
+                                    TermLocation::Graph,
+                                ));
+                            }
+                        };
+                        thing.q_graph(g)?;
+                        thing.graph_started = true;
+                    } else {
+                        return Err(DeserializeError::PhysicalStreamError(
+                            PhysicalStreamError::IncorrectType {
+                                detected: thing.physical_type,
+                                incoming: MessageType::GraphStart,
+                            },
+                        ));
+                    }
+                }
+                Row::GraphEnd(_) => {
+                    if thing.physical_type == PhysicalStreamType::Graphs {
+                        println!("Graph end!");
+                        thing.last_graph = None;
+                        thing.graph_started = false;
+                    } else {
+                        return Err(DeserializeError::PhysicalStreamError(
+                            PhysicalStreamError::IncorrectType {
+                                detected: thing.physical_type,
+                                incoming: MessageType::GraphEnd,
+                            },
+                        ));
+                    }
                 }
                 Row::Namespace(rdf_namespace_declaration) => {
                     info!("Name space is fine: {} ", rdf_namespace_declaration.name,);
                 }
-                Row::Name(rdf_name_entry) => {
-                    if let Err(e) = thing.name_entry(rdf_name_entry) {
-                        println!("Error {:?}", e)
-                    }
-                }
-                Row::Prefix(rdf_prefix_entry) => {
-                    if let Err(e) = thing.prefix_entry(rdf_prefix_entry) {
-                        println!("Error {:?}", e)
-                    }
-                }
-                Row::Datatype(rdf_datatype_entry) => {
-                    if let Err(e) = thing.datatype_entry(rdf_datatype_entry) {
-                        println!("Error {:?}", e)
-                    }
-                }
+                Row::Name(rdf_name_entry) => thing.name_entry(rdf_name_entry)?,
+                Row::Prefix(rdf_prefix_entry) => thing.prefix_entry(rdf_prefix_entry)?,
+                Row::Datatype(rdf_datatype_entry) => thing.datatype_entry(rdf_datatype_entry)?,
             }
         }
-        Ok(())
+        Ok(handler)
     }
 }
