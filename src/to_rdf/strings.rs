@@ -1,142 +1,90 @@
-use crate::Inner;
-use crate::deserialize::{RdfHandler, ToTerm as _};
-use crate::error::{DeserializeError, TermLocation};
-use crate::lookup::LookupType;
+use std::borrow::Cow;
+
+use crate::deserialize::{Deserializer, RdfHandler};
+use crate::error::{DeserializeError, LookupError};
 use crate::proto::{RdfIri, RdfLiteral, RdfTriple, rdf_literal::LiteralKind};
 
-use super::ToRdf;
+use super::{IriParams, LiteralParams, ToRdf};
 pub struct StringRdf;
 
+type T = Cow<'static, str>;
 impl ToRdf for StringRdf {
-    type Term = String;
+    type Term = T;
 
-    type Triple<'a> = (&'a str, &'a str, &'a str);
+    type Triple = (T, T, T);
 
-    type Quad<'a> = (&'a str, &'a str, &'a str, Option<&'a str>);
+    type Quad = (T, T, T, Option<T>);
     type State = ();
 
     fn default_term() -> Self::Term {
-        String::new()
+        Cow::Borrowed("")
     }
 
     #[inline]
-    fn iri(iri: RdfIri, deserializer: &mut Inner<Self>) -> Result<Self::Term, DeserializeError> {
-        Ok(format!(
-            "<{}{}>",
-            deserializer
-                .prefix_table
-                .get(iri.prefix_id, LookupType::Stay)?,
-            deserializer.name_table.get(iri.name_id, LookupType::Inc)?
-        ))
+    fn iri(
+        _iri: RdfIri,
+        params: IriParams,
+        _deserializer: &mut Deserializer<Self>,
+    ) -> Result<Self::Term, DeserializeError> {
+        Ok(format!("<{}{}>", params.prefix, params.name,).into())
     }
 
     #[inline]
-    fn bnode(key: String, _: &mut Inner<Self>) -> Result<Self::Term, DeserializeError> {
-        Ok(format!("_:B{}", key))
+    fn bnode(key: String, _: &mut Deserializer<Self>) -> Result<Self::Term, DeserializeError> {
+        Ok(format!("_:B{}", key).into())
     }
 
     #[inline]
     fn literal(
         literal: RdfLiteral,
-        deserializer: &mut Inner<Self>,
+        param: LiteralParams,
+        _deserializer: &mut Deserializer<Self>,
     ) -> Result<Self::Term, DeserializeError> {
         let lex = literal.lex;
         Ok(match literal.literal_kind {
             Some(LiteralKind::Langtag(tag)) => format!("\"{}\"@{}", lex, tag),
-            Some(LiteralKind::Datatype(tag)) => {
+            Some(LiteralKind::Datatype(_)) => {
                 format!(
                     "\"{}\"^^<{}>",
                     lex,
-                    deserializer.datatype_table.get(tag, LookupType::Invalid)?
+                    param.datatype.ok_or(LookupError::InvalidLookupAction)?
                 )
             }
             None => {
                 format!("\"{}\"", lex)
             }
-        })
+        }
+        .into())
     }
 
     #[inline]
     fn term_triple(
         triple: RdfTriple,
-        deserializer: &mut Inner<Self>,
+        deserializer: &mut Deserializer<Self>,
     ) -> Result<Self::Term, DeserializeError> {
-        let RdfTriple {
-            subject,
-            predicate,
-            object,
-        } = triple;
-        let s = if let Some(s) = subject {
-            deserializer.to_term(s)?
-        } else {
-            return Err(DeserializeError::MissingTermTermTriple(
-                TermLocation::Subject,
-            ));
-        };
-
-        let p = if let Some(s) = predicate {
-            deserializer.to_term(s)?
-        } else {
-            return Err(DeserializeError::MissingTermTermTriple(
-                TermLocation::Predicate,
-            ));
-        };
-
-        let o = if let Some(s) = object {
-            deserializer.to_term(s)?
-        } else {
-            return Err(DeserializeError::MissingTermTermTriple(
-                TermLocation::Object,
-            ));
-        };
-
-        Ok(format!("<< {} {} {} >>", s, p, o))
+        let (s, p, o) = deserializer.triple_term_terms(triple)?;
+        Ok(format!("<< {} {} {} >>", s, p, o).into())
     }
 
     #[inline]
-    fn triple<'a>(deserializer: &'a mut Inner<Self>) -> Result<Self::Triple<'a>, DeserializeError> {
-        Ok((
-            &deserializer
-                .last_subject
-                .as_ref()
-                .ok_or(DeserializeError::MissingTerm(TermLocation::Subject))?,
-            &deserializer
-                .last_predicate
-                .as_ref()
-                .ok_or(DeserializeError::MissingTerm(TermLocation::Predicate))?,
-            &deserializer
-                .last_object
-                .as_ref()
-                .ok_or(DeserializeError::MissingTerm(TermLocation::Object))?,
-        ))
+    fn triple(deserializer: &mut Deserializer<Self>) -> Result<Self::Triple, DeserializeError> {
+        let (s, p, o) = deserializer.spo()?;
+        Ok((s, p, o))
     }
 
     #[inline]
-    fn quad<'a>(deserializer: &'a mut Inner<Self>) -> Result<Self::Quad<'a>, DeserializeError> {
-        Ok((
-            &deserializer
-                .last_subject
-                .as_ref()
-                .ok_or(DeserializeError::MissingTerm(TermLocation::Subject))?,
-            &deserializer
-                .last_predicate
-                .as_ref()
-                .ok_or(DeserializeError::MissingTerm(TermLocation::Predicate))?,
-            &deserializer
-                .last_object
-                .as_ref()
-                .ok_or(DeserializeError::MissingTerm(TermLocation::Object))?,
-            deserializer.last_graph.as_ref().map(|x| x.as_str()),
-        ))
+    fn quad(deserializer: &mut Deserializer<Self>) -> Result<Self::Quad, DeserializeError> {
+        let (s, p, o) = deserializer.spo()?;
+        Ok((s, p, o, deserializer.last_graph.as_ref().map(|x| x.clone())))
     }
 }
 
 impl<'a> RdfHandler<StringRdf> for &mut Vec<(String, String, String, Option<String>)> {
-    fn handle_triple<'b>(&mut self, (s, p, o): <StringRdf as ToRdf>::Triple<'b>) {
+    fn handle_triple<'b>(&mut self, (s, p, o): <StringRdf as ToRdf>::Triple) {
         self.push((s.to_string(), p.to_string(), o.to_string(), None));
     }
 
-    fn handle_quad<'b>(&mut self, (s, p, o, q): <StringRdf as ToRdf>::Quad<'b>) {
+    fn handle_quad<'b>(&mut self, (s, p, o, q): <StringRdf as ToRdf>::Quad) {
         self.push((
             s.to_string(),
             p.to_string(),

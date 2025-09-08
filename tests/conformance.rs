@@ -120,7 +120,7 @@ fn test_positive(input: &str, result: &[&str]) {
     trace!("test case with {:?} frame results", result);
     let mut result_iter = result.into_iter();
     let mut errored = false;
-    let mut des = Deserializer::<SophiaRdf>::new();
+    let mut des = Deserializer::<SophiaRdf>::new(HashMap::new());
 
     for frame in frames {
         let this_result = result_iter
@@ -132,12 +132,12 @@ fn test_positive(input: &str, result: &[&str]) {
 
         let graph_handler = StateHandler::new(
             Vec::new(),
-            |triple: <SophiaRdf as ToRdf>::Triple<'_>, state: &mut Vec<Q>| {
+            |triple: <SophiaRdf as ToRdf>::Triple, state: &mut Vec<Q>| {
                 state
                     .insert_quad((triple, None))
                     .expect("triple inserted succesfully");
             },
-            |quad: <SophiaRdf as ToRdf>::Quad<'_>, state: &mut Vec<Q>| {
+            |quad: <SophiaRdf as ToRdf>::Quad, state: &mut Vec<Q>| {
                 state.insert_quad(quad).expect("quad inserted succesfully");
             },
         );
@@ -169,11 +169,11 @@ fn test_negative(input: &str) {
     let frames = FrameReader::new(Cursor::new(content));
 
     let mut errored = false;
-    let mut des = Deserializer::<StringRdf>::new();
+    let mut des = Deserializer::<StringRdf>::new(());
 
     let mut h = (
-        |_: <StringRdf as ToRdf>::Triple<'_>| {},
-        |_: <StringRdf as ToRdf>::Quad<'_>| {},
+        |_: <StringRdf as ToRdf>::Triple| {},
+        |_: <StringRdf as ToRdf>::Quad| {},
     );
 
     for frame in frames {

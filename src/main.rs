@@ -13,11 +13,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open(file_name)?;
     let generator = FrameReader::new(file);
 
-    let mut des = Deserializer::<StringRdf>::new();
+    let mut des = Deserializer::<StringRdf>::new(());
 
     let mut h = (
-        |(s, p, o): <StringRdf as ToRdf>::Triple<'_>| println!("Triple {} {} {} .", s, p, o),
-        |(s, p, o, g): <StringRdf as ToRdf>::Quad<'_>| {
+        |(s, p, o): <StringRdf as ToRdf>::Triple| println!("Triple {} {} {} .", s, p, o),
+        |(s, p, o, g): <StringRdf as ToRdf>::Quad| {
             if let Some(g) = g {
                 println!("Quad {} {} {} {} .", s, p, o, g);
             } else {

@@ -11,8 +11,7 @@ pub mod error;
 pub mod lookup;
 pub mod proto;
 pub mod to_rdf;
-
-pub use deserialize::Inner;
+pub use deserialize::Deserializer;
 
 /// Read a Protobuf varint from an std::io::Read
 fn read_varint<R: Read>(reader: &mut R) -> std::io::Result<u64> {
@@ -52,6 +51,7 @@ impl<R> FrameReader<R> {
         Self { reader }
     }
 }
+pub type Frame = RdfStreamFrame;
 
 impl<R: Read> Iterator for FrameReader<R> {
     type Item = RdfStreamFrame;
