@@ -185,6 +185,22 @@ impl<T: ToRdf> Deserializer<T> {
         Ok(())
     }
 
+    pub fn spo_ref(&self) -> Result<(&T::Term, &T::Term, &T::Term), DeserializeError> {
+        let s = self
+            .last_subject
+            .as_ref()
+            .ok_or(DeserializeError::MissingTerm(TermLocation::Subject))?;
+        let p = self
+            .last_predicate
+            .as_ref()
+            .ok_or(DeserializeError::MissingTerm(TermLocation::Predicate))?;
+        let o = self
+            .last_object
+            .as_ref()
+            .ok_or(DeserializeError::MissingTerm(TermLocation::Object))?;
+        Ok((s, p, o))
+    }
+
     pub fn triple_term_terms(
         &mut self,
         triple: RdfTriple,

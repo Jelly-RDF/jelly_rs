@@ -16,6 +16,9 @@ pub enum DeserializeError {
     #[error("lookup error {0}")]
     LookupError(#[from] LookupError),
 
+    #[error("{0} is not implemented")]
+    NotImplemented(&'static str),
+
     // Sophia errors
     #[cfg(feature = "sophia")]
     #[error("Missing term in term triple {0}")]
