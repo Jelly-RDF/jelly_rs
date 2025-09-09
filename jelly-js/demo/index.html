@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en-US">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Jelly Demo</title>
+</head>
+
+<body>
+    <h1>
+        Client side Jelly POC
+    </h1>
+    <header>
+        <div>
+            <input type="file" id="fileInput" />
+        </div>
+
+        <div class="fetch">
+            <button id="fetchBtn">Fetch</button>
+            <input type="text" id="urlInput"
+                value="https://raw.githubusercontent.com/Jelly-RDF/jelly-protobuf/refs/heads/main/test/rdf/from_jelly/triples_rdf_1_1/pos_001/in.jelly" />
+        </div>
+        <label class="checkbox-label">
+            <input type="checkbox" id="showQuadsCheckbox">
+            show quads (slower)
+        </label>
+    </header>
+
+    <div id="output"></div>
+
+    <script src="./index.js"></script>
+
+    <script>
+        // Wire up file input
+        document.getElementById("fileInput").addEventListener("change", e => {
+            const file = e.target.files[0];
+            if (file) {
+                streamSource(file).catch(err => console.error(err));
+            }
+        });
+
+        // Wire up fetch button
+        document.getElementById("fetchBtn").addEventListener("click", () => {
+            const url = document.getElementById("urlInput").value.trim();
+            if (url) {
+                streamSource(url).catch(err => console.error(err));
+            }
+        });
+    </script>
+</body>
+
+</html>

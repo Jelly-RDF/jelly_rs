@@ -1,0 +1,226 @@
+:root {
+    /* --color: #00ff66; */
+    --color: #ff7f00;
+}
+
+/* Hacker vibe base */
+body {
+    margin: 0;
+    font-family: monospace;
+    background: #0a0a0a;
+    color: var(--color);
+    line-height: 1.5;
+}
+
+/* Content box */
+div.content {
+    max-width: 700px;
+    margin: 2rem auto;
+    padding: 1.5rem;
+    border: 1px solid var(--color);
+    border-radius: 6px;
+    /* box-shadow: 0 0 10px rgba(0, 255, 102, 0.4); */
+}
+
+.file {
+    margin: 10px auto;
+    width: 80vw;
+    min-width: 500px;
+}
+
+.file header {
+    display: flex;
+    gap: 2em;
+    align-items: baseline;
+}
+
+/* Headers */
+h1,
+h2,
+h3 {
+    margin-top: 0;
+    font-weight: bold;
+    color: var(--color);
+    /* text-shadow: 0 0 5px rgba(0, 255, 102, 0.7); */
+}
+
+h1 {
+    font-size: 1.8rem;
+}
+
+h2 {
+    font-size: 1.4rem;
+    margin-top: 1rem;
+}
+
+/* Buttons + file input buttons */
+button,
+input[type="file"]::file-selector-button {
+    background: #000;
+    color: var(--color);
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    border: 1px solid var(--color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-shadow: 0 0 3px var(--color);
+}
+
+button:hover,
+input[type="file"]::file-selector-button:hover {
+    background: var(--color);
+    box-shadow: 0 0 8px var(--color);
+}
+
+button:active,
+input[type="file"]::file-selector-button:active {
+    background: #006600;
+}
+
+/* File input itself */
+input[type="file"] {
+    margin: 0.5rem 0;
+    color: var(--color);
+}
+
+/* Paragraphs */
+p {
+    margin: 0.5rem 0;
+}
+
+/* Text input fields */
+input[type="text"],
+input[type="url"],
+input[type="search"],
+input[type="password"] {
+    background: #000;
+    color: var(--color);
+    font-family: monospace;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--color);
+    border-radius: 4px;
+    margin: 0.25rem 0;
+    outline: none;
+    text-shadow: 0 0 3px var(--color);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="url"]:focus,
+input[type="search"]:focus,
+input[type="password"]:focus {
+    border-color: var(--color);
+    box-shadow: 0 0 8px var(--color);
+}
+
+.collapsible {
+    position: relative;
+    max-height: 200px;
+    overflow-y: hidden;
+    overflow-x: hidden;
+    border: 1px solid var(--color);
+    border-radius: 6px;
+}
+
+.collapsible.expanded {
+    max-height: 700px;
+    overflow-y: auto;
+}
+
+.collapsible-toggle {
+    display: block;
+    width: 100%;
+    padding: 0.4rem;
+    background: #000;
+    color: var(--color);
+    cursor: pointer;
+    border-top: 1px solid var(--color);
+    font-family: monospace;
+}
+
+pre {
+    margin: 0;
+    padding: 1rem;
+    color: #00ff66;
+    font-family: monospace;
+    white-space: pre-wrap;
+    /* 👈 scrollable when content exceeds max-height */
+    /* wraps long lines if you want */
+}
+
+.frames {
+    display: flex;
+    flex-direction: column;
+    gap: 2em;
+}
+
+label.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+input[type="checkbox"] {
+    width: 1.2rem;
+    height: 1.2rem;
+    cursor: pointer;
+    appearance: none;
+    /* remove default styling */
+    background: #000;
+    /* box background */
+    border: 1px solid var(--color);
+    /* neon border */
+    border-radius: 3px;
+    position: relative;
+}
+
+input[type="checkbox"]:checked {
+    background: var(--color);
+    /* neon fill when checked */
+}
+
+input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    border: solid #000;
+    border-width: 0 2px 2px 0;
+}
+
+header {
+    justify-content: space-evenly;
+    display: flex;
+    gap: 2em;
+    align-items: baseline;
+    margin: 2em auto;
+
+    width: 80vw;
+}
+
+h1 {
+    margin-top: 0.5em;
+    text-align: center;
+}
+
+@media (max-width: 800px) {
+    header {
+        width: 100%;
+        gap: 0.5em;
+    }
+
+    .file {
+        width: 100%;
+    }
+}
+
+.fetch {
+    flex-grow: 1;
+    display: flex;
+}
+
+.fetch input {
+    flex-grow: 1;
+}

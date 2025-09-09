@@ -1,0 +1,21 @@
+[package]
+name = "jelly_js"
+version = "0.1.0"
+edition = "2024"
+
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+jelly = {path= "../"}
+js-sys = "0.3.78"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4.51"
+
+futures = "0.3"
+
+[package.metadata.wasm-pack.package]
+# extra fields merged into the generated package.json
+dependencies = { n3 = "^1.17.3" }
