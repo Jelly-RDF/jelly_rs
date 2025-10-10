@@ -5,6 +5,16 @@ use crate::lookup::LookupType;
 use crate::proto::{RdfIri, RdfLiteral, RdfTriple, rdf_literal::LiteralKind};
 
 use super::ToRdf;
+
+/// Escape quotes and control characters in literal values for N-Triples format
+fn escape_literal(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
+}
+
 pub struct StringRdf;
 
 impl ToRdf for StringRdf {
@@ -40,7 +50,7 @@ impl ToRdf for StringRdf {
         literal: RdfLiteral,
         deserializer: &mut Inner<Self>,
     ) -> Result<Self::Term, DeserializeError> {
-        let lex = literal.lex;
+        let lex = escape_literal(&literal.lex);
         Ok(match literal.literal_kind {
             Some(LiteralKind::Langtag(tag)) => format!("\"{}\"@{}", lex, tag),
             Some(LiteralKind::Datatype(tag)) => {
