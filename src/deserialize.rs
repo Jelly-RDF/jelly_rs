@@ -183,6 +183,39 @@ impl<T: ToRdf> Inner<T> {
     }
 }
 
+impl<T: ToRdf> Clone for Inner<T>
+  where T: ToOwned,
+        <T as ToRdf>::State : ToOwned<Owned = <T as ToRdf>::State>,
+        <T as ToRdf>::Term : ToOwned<Owned = <T as ToRdf>::Term>
+{
+    fn clone(&self) -> Self {
+        Self {
+            name_table: self.name_table.clone(),
+            datatype_table: self.datatype_table.clone(),
+            prefix_table: self.prefix_table.clone(),
+            last_subject: match &self.last_subject {
+                Some(s) => Some(s.to_owned()),
+                None => None
+            },
+            last_predicate: match &self.last_predicate {
+                Some(p) => Some(p.to_owned()),
+                None => None
+            },
+            last_object: match &self.last_object {
+                Some(o) => Some(o.to_owned()),
+                None => None
+            },
+            last_graph: match &self.last_graph {
+                Some(g) => Some(g.to_owned()),
+                None => None
+            },
+            state: (&self.state).to_owned(),
+            physical_type: self.physical_type,
+            graph_started: self.graph_started
+        }
+    }
+}
+
 pub trait RdfHandler<T: ToRdf> {
     fn handle_triple<'b>(&mut self, triple: T::Triple<'b>);
     fn handle_quad<'b>(&mut self, quad: T::Quad<'b>);
@@ -239,6 +272,8 @@ where
         self.1(quad)
     }
 }
+
+
 
 pub enum Deserializer<T: ToRdf> {
     Inited(Inner<T>),
@@ -363,5 +398,24 @@ impl<T: ToRdf> Deserializer<T> {
             }
         }
         Ok(handler)
+    }
+}
+
+impl<T: ToRdf> Default for Deserializer<T> {
+    fn default() -> Self {
+        Deserializer::Empty
+    }
+}
+
+impl<T: ToRdf> Clone for Deserializer<T>
+where T: ToOwned,
+  <T as ToRdf>::State : ToOwned<Owned = <T as ToRdf>::State>,
+  <T as ToRdf>::Term : ToOwned<Owned = <T as ToRdf>::Term>
+{
+    fn clone(&self) -> Self {
+        match self {
+            Deserializer::Inited(inner) => Deserializer::Inited(inner.to_owned()),
+            Deserializer::Empty => Deserializer::Empty,
+        }
     }
 }
