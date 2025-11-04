@@ -5,6 +5,7 @@ use std::{
 
 use crate::error::LookupError;
 
+#[derive(Debug, Clone)]
 pub struct Lookup {
     size: usize,
     next_written: usize,
@@ -35,6 +36,7 @@ static EMPTY: Cow<'static, str> = Cow::Borrowed("");
 impl Lookup {
     pub fn new(size: u32) -> Self {
         Self {
+            // This is size+1 because index 0 is ignored, never read/written
             arr: vec![None; size as usize + 1],
             last_read: 0,
             next_written: 1,
