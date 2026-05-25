@@ -218,7 +218,7 @@ dependencies = [
  "prost-types",
  "sophia_api",
  "sophia_inmem",
- "sophia_iri",
+ "sophia_iri 0.10.0",
  "sophia_term",
  "sophia_turtle",
  "thiserror",
@@ -540,7 +540,7 @@ dependencies = [
  "regex",
  "resiter",
  "serde",
- "sophia_iri",
+ "sophia_iri 0.9.0",
  "thiserror",
 ]
 
@@ -568,6 +568,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "sophia_iri"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9736c34ba10d2efe736035837ccb149494587c7c4bcc87202162582ca383cbb3"
+dependencies = [
+ "oxiri",
+ "regex",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "sophia_rio"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -575,7 +587,7 @@ checksum = "57a2938da8eeb8645ff616e64ac99af8099772c3e22a955ae5669ceac5372c34"
 dependencies = [
  "rio_api",
  "sophia_api",
- "sophia_iri",
+ "sophia_iri 0.9.0",
 ]
 
 [[package]]
@@ -599,7 +611,7 @@ dependencies = [
  "regex",
  "rio_turtle",
  "sophia_api",
- "sophia_iri",
+ "sophia_iri 0.9.0",
  "sophia_rio",
 ]
 
