@@ -216,9 +216,9 @@ dependencies = [
  "prost",
  "prost-build",
  "prost-types",
- "sophia_api",
+ "sophia_api 0.9.0",
  "sophia_inmem",
- "sophia_iri",
+ "sophia_iri 0.9.0",
  "sophia_term",
  "sophia_turtle",
  "thiserror",
@@ -540,17 +540,46 @@ dependencies = [
  "regex",
  "resiter",
  "serde",
- "sophia_iri",
+ "sophia_iri 0.9.0",
+ "thiserror",
+]
+
+[[package]]
+name = "sophia_api"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c12f9db8c8e0d45f49582f3d3782e28b0f38c6225448edb2af1cee028c658d1"
+dependencies = [
+ "lazy_static",
+ "log",
+ "mownstr",
+ "regex",
+ "resiter",
+ "serde",
+ "sophia_bcp47",
+ "sophia_iri 0.10.0",
+ "thiserror",
+]
+
+[[package]]
+name = "sophia_bcp47"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "867126821839373d9d62b5755e8bbb321ce4c0d72df806340a8d0384ea5ae0a0"
+dependencies = [
+ "mownstr",
+ "regex",
+ "serde",
  "thiserror",
 ]
 
 [[package]]
 name = "sophia_inmem"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebacba4fa7baed53f89844a5c9e5962d6232a449d5b450b9de72bb67f0203332"
+checksum = "fe80457d61964da2317a72afdbd6c376b233f13cb5181d0137089b25cbc20ff7"
 dependencies = [
- "sophia_api",
+ "sophia_api 0.10.0",
  "thiserror",
 ]
 
@@ -568,14 +597,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "sophia_iri"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9736c34ba10d2efe736035837ccb149494587c7c4bcc87202162582ca383cbb3"
+dependencies = [
+ "oxiri",
+ "regex",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "sophia_rio"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57a2938da8eeb8645ff616e64ac99af8099772c3e22a955ae5669ceac5372c34"
 dependencies = [
  "rio_api",
- "sophia_api",
- "sophia_iri",
+ "sophia_api 0.9.0",
+ "sophia_iri 0.9.0",
 ]
 
 [[package]]
@@ -585,7 +626,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51f4c42480d50d14ac7128ad738d28b68368938cb6f507c9505f68875fd0e4db"
 dependencies = [
  "lazy_static",
- "sophia_api",
+ "sophia_api 0.9.0",
 ]
 
 [[package]]
@@ -598,8 +639,8 @@ dependencies = [
  "oxiri",
  "regex",
  "rio_turtle",
- "sophia_api",
- "sophia_iri",
+ "sophia_api 0.9.0",
+ "sophia_iri 0.9.0",
  "sophia_rio",
 ]
 

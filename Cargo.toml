@@ -24,7 +24,7 @@ sophia_term = "0.9.0"
 sophia_api = "0.9.0"
 sophia_iri = "0.9.0"
 sophia_turtle = "0.9.0"
-sophia_inmem = "0.9.0"
+sophia_inmem = "0.10.0"
 
 [features]
 default = ["sophia"]
