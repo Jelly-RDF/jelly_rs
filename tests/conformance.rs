@@ -110,6 +110,20 @@ fn read_manifested_file(input: &str) -> Vec<u8> {
     content
 }
 
+/// Rewrite classic RDF-star quoted-triple delimiters (`<< .. >>`) into the
+/// RDF 1.2 triple-term syntax (`<<( .. )>>`) that Sophia's N-Quads parser
+/// expects since 0.10. The two are semantically identical (both parse to a
+/// triple term), so this only bridges the surface syntax used by the
+/// reference fixtures. Safe as a plain substitution because the fixtures
+/// never contain `<<`/`>>` inside string literals.
+fn to_rdf12_triple_terms(content: Vec<u8>) -> Vec<u8> {
+    String::from_utf8(content)
+        .expect("nquads fixture is utf-8")
+        .replace("<<", "<<(")
+        .replace(">>", ")>>")
+        .into_bytes()
+}
+
 #[cfg(test)]
 fn test_positive(input: &str, result: &[&str]) {
     use log::{debug, trace};
@@ -128,7 +142,7 @@ fn test_positive(input: &str, result: &[&str]) {
             .expect("equal amount of frames to results");
         debug!("Handling result file {}", this_result);
 
-        let file = read_manifested_file(this_result);
+        let file = to_rdf12_triple_terms(read_manifested_file(this_result));
 
         let graph_handler = StateHandler::new(
             Vec::new(),

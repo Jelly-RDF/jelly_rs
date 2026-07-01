@@ -58,7 +58,7 @@ impl ToRdf for SophiaRdf {
         Ok(match literal.literal_kind {
             Some(LiteralKind::Langtag(tag)) => {
                 let lang = LanguageTag::new(Arc::from(tag))?;
-                ArcTerm::Literal(sophia_term::GenericLiteral::LanguageString(lex, lang))
+                ArcTerm::Literal(sophia_term::GenericLiteral::LanguageString(lex, lang, None))
             }
             Some(LiteralKind::Datatype(tag)) => {
                 let datatype = IriRef::new(Arc::from(

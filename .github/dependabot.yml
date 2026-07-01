@@ -12,3 +12,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      sophia:
+        patterns:
+          - "sophia_*"

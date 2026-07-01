@@ -11,8 +11,8 @@ use sophia_api::{
     source::QuadSource,
     term::Term,
 };
-use sophia_inmem::{dataset::GenericFastDataset, index::SimpleTermIndex};
-use sophia_iri::Iri;
+use sophia_inmem::{dataset::GenericFastDataset, index::BasicTermIndex};
+use sophia_iri::resolve::BaseIriRef;
 
 pub mod rdfs {
     use sophia_api::namespace;
@@ -170,7 +170,7 @@ fn basic_info<T: Term + Clone>(graph: &G, subj: T) -> Option<BasicInfo> {
     })
 }
 
-type G = GenericFastDataset<SimpleTermIndex<usize>>;
+type G = GenericFastDataset<BasicTermIndex<usize>>;
 fn positive(graph: &G) -> Vec<BasicInfo> {
     let mut out = Vec::new();
     for (_, [subj, _, _]) in graph
@@ -212,8 +212,8 @@ fn setup_from_jelly_tests() {
 
     let tests_manifest = fs::read_to_string(&path).expect("Failed to read spec");
 
-    let base = Iri::new(format!("file://{}", location)).unwrap();
-    let parser = sophia_turtle::parser::gtrig::GTriGParser { base: Some(base) };
+    let base = BaseIriRef::new(format!("file://{}", location).into_boxed_str()).unwrap();
+    let parser = sophia_turtle::parser::gtrig::GTriGParser::new().with_base(Some(base));
 
     let quads: G = parser
         .parse_str(&tests_manifest)
